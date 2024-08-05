@@ -123,7 +123,7 @@ pipe = TryonPipeline.from_pretrained(
 )
 pipe.unet_encoder = UNet_Encoder
 
-def start_tryon(dict,garm_img,garment_des,is_checked,is_checked_crop,denoise_steps,seed):
+def start_tryon(dict,garm_img,garment_des,is_checked, category, is_checked_crop,denoise_steps,seed):
     
     openpose_model.preprocessor.body_estimation.model.to(device)
     pipe.to(device)
@@ -150,7 +150,7 @@ def start_tryon(dict,garm_img,garment_des,is_checked,is_checked_crop,denoise_ste
     if is_checked:
         keypoints = openpose_model(human_img.resize((384,512)))
         model_parse, _ = parsing_model(human_img.resize((384,512)))
-        mask, mask_gray = get_mask_location('hd', "upper_body", model_parse, keypoints)
+        mask, mask_gray = get_mask_location('hd', category, model_parse, keypoints)
         mask = mask.resize((768,1024))
     else:
         mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
@@ -270,6 +270,13 @@ with image_blocks as demo:
             with gr.Row():
                 is_checked_crop = gr.Checkbox(label="Yes", info="Use auto-crop & resizing",value=False)
 
+                # Adding radio buttons for category
+                category = gr.Radio(
+                    choices=["upper_body", "lower_body", "dresses"],
+                    label="Category",
+                    value="upper_body"  # Default value
+                )
+
             example = gr.Examples(
                 inputs=imgs,
                 examples_per_page=10,
@@ -304,7 +311,7 @@ with image_blocks as demo:
 
 
 
-    try_button.click(fn=start_tryon, inputs=[imgs, garm_img, prompt, is_checked,is_checked_crop, denoise_steps, seed], outputs=[image_out,masked_img], api_name='tryon')
+    try_button.click(fn=start_tryon, inputs=[imgs, garm_img, prompt, is_checked, category, is_checked_crop, denoise_steps, seed], outputs=[image_out,masked_img], api_name='tryon')
 
             
 
