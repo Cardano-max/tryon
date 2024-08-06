@@ -11,3 +11,19 @@ curl -L "https://huggingface.co/spaces/yisol/IDM-VTON/resolve/main/ckpt/openpose
 
 # Download model_final_162be9.pkl
 curl -L "https://huggingface.co/spaces/yisol/IDM-VTON/resolve/main/ckpt/densepose/model_final_162be9.pkl?download=true" -o ckpt/densepose/model_final_162be9.pkl
+
+# Install dependencies
+apt-get update -y && apt-get install -y curl libgl1 libglib2.0-0 build-essential
+
+# Initialize conda
+conda init
+source ~/.bashrc
+
+# Create conda environment
+conda env create -f environment.yaml
+
+# Activate conda environment
+conda activate idm
+
+# Run the server
+python gradio_demo/app.py
