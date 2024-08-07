@@ -1,7 +1,7 @@
+import gradio as gr
 import sys
 sys.path.append('./')
 from PIL import Image
-import gradio as gr
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
 from src.unet_hacked_garmnet import UNet2DConditionModel as UNet2DConditionModel_ref
 from src.unet_hacked_tryon import UNet2DConditionModel
@@ -11,9 +11,8 @@ from transformers import (
     CLIPTextModel,
     CLIPTextModelWithProjection,
 )
-from diffusers import DDPMScheduler,AutoencoderKL
+from diffusers import DDPMScheduler, AutoencoderKL
 from typing import List
-
 import torch
 import os
 from transformers import AutoTokenizer
@@ -23,11 +22,135 @@ from torchvision import transforms
 import apply_net
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
-from detectron2.data.detection_utils import convert_PIL_to_numpy,_apply_exif_orientation
+from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
+# Define the catalog items
+catalog = [
+    {"name": "T-Shirt", "image": "images/2.png", "description": "Classic cotton T-shirt"},
+    {"name": "Dress", "image": "images/2.png", "description": "Elegant evening dress"},
+    {"name": "Jacket", "image": "images/2.png", "description": "Stylish leather jacket"},
+]
+
+# Custom CSS for modern design
+custom_css = """
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+    
+    body, .gradio-container {
+        font-family: 'Poppins', sans-serif;
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    .header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .header h1 {
+        font-size: 3rem;
+        color: #bb86fc;
+        text-shadow: 0 0 10px rgba(187, 134, 252, 0.3);
+    }
+    .header p {
+        color: #03dac6;
+    }
+    .tabs {
+        background-color: #1e1e1e;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+    .tab-nav {
+        background-color: #2c2c2c;
+        padding: 1rem;
+    }
+    .tab-nav button {
+        background-color: transparent;
+        color: #bb86fc;
+        border: none;
+        padding: 0.5rem 1rem;
+        margin-right: 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        border-radius: 5px;
+    }
+    .tab-nav button:hover, .tab-nav button.selected {
+        background-color: #bb86fc;
+        color: #121212;
+    }
+    .tab-content {
+        padding: 2rem;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+    .card {
+        background-color: #2c2c2c;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(187, 134, 252, 0.2);
+    }
+    .card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+    .card-content {
+        padding: 1rem;
+    }
+    .btn {
+        background-color: #bb86fc;
+        color: #121212;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+    .btn:hover {
+        background-color: #03dac6;
+        box-shadow: 0 0 10px rgba(3, 218, 198, 0.5);
+    }
+    #output-img, #masked-img {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+    .gradio-slider input[type="range"] {
+        background-color: #bb86fc;
+    }
+    .gradio-slider input[type="range"]::-webkit-slider-thumb {
+        background-color: #03dac6;
+    }
+    .gradio-checkbox input[type="checkbox"] {
+        border-color: #bb86fc;
+    }
+    .gradio-checkbox input[type="checkbox"]:checked {
+        background-color: #bb86fc;
+    }
+    .gradio-radio label span {
+        border-color: #bb86fc;
+    }
+    .gradio-radio input[type="radio"]:checked + label span {
+        background-color: #bb86fc;
+    }
+"""
+
+# Include all the necessary functions from the original code
 def pil_to_binary_mask(pil_image, threshold=0):
     np_image = np.array(pil_image)
     grayscale_image = Image.fromarray(np_image).convert("L")
@@ -35,13 +158,13 @@ def pil_to_binary_mask(pil_image, threshold=0):
     mask = np.zeros(binary_mask.shape, dtype=np.uint8)
     for i in range(binary_mask.shape[0]):
         for j in range(binary_mask.shape[1]):
-            if binary_mask[i,j] == True :
+            if binary_mask[i,j] == True:
                 mask[i,j] = 1
     mask = (mask*255).astype(np.uint8)
     output_mask = Image.fromarray(mask)
     return output_mask
 
-
+# Initialize all the models and configurations as in the original code
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
 
@@ -259,62 +382,64 @@ for ex_human in human_list_path:
 
 
 image_blocks = gr.Blocks().queue()
-with image_blocks as demo:
-    gr.Markdown("## ARBI-TRYON 👕👔👚")
-    gr.Markdown("Virtual Try-on with your image and garment image. Check out the [source codes](https://github.com/yisol/IDM-VTON) and the [model](https://huggingface.co/yisol/IDM-VTON)")
-    with gr.Row():
-        with gr.Column():
-            imgs = gr.ImageEditor(sources='upload', type="pil", label='Human. Mask with pen or use auto-masking', interactive=True)
+with gr.Blocks(css=custom_css) as demo:
+    gr.HTML("""
+        <div class="header">
+            <h1>✨ ArbiTryOn: Virtual Fitting Room ✨</h1>
+            <p>Step into the future of fashion with our AI-powered virtual wardrobe</p>
+        </div>
+    """)
+
+    with gr.Tabs() as tabs:
+        with gr.TabItem("Virtual Try-On"):
             with gr.Row():
-                is_checked = gr.Checkbox(label="Yes", info="Use auto-generated mask (Takes 5 seconds)",value=True)
+                with gr.Column():
+                    human_image = gr.Image(label="Upload Your Photo", type="pil", source="upload")
+                    auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
+                    auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
+                    category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
+
+                with gr.Column():
+                    garment_image = gr.Image(label="Upload or Select Garment", type="pil", source="upload")
+                    description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
+
+                with gr.Column():
+                    output_image = gr.Image(label="Your Virtual Try-On")
+                    masked_image = gr.Image(label="AI-Generated Mask")
+
             with gr.Row():
-                is_checked_crop = gr.Checkbox(label="Yes", info="Use auto-crop & resizing",value=False)
+                try_on_button = gr.Button("Experience Your New Look!", variant="primary")
 
-                # Adding radio buttons for category
-                category = gr.Radio(
-                    choices=["upper_body", "lower_body", "dresses"],
-                    label="Category",
-                    value="upper_body"  # Default value
-                )
+            with gr.Accordion("Advanced Customization", open=False):
+                denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
+                seed = gr.Number(label="Randomness Seed", value=42)
 
-            example = gr.Examples(
-                inputs=imgs,
-                examples_per_page=10,
-                examples=human_ex_list
-            )
-
-        with gr.Column():
-            garm_img = gr.Image(label="Garment", sources='upload', type="pil")
-            with gr.Row(elem_id="prompt-container"):
-                with gr.Row():
-                    prompt = gr.Textbox(placeholder="Description of garment ex) Short Sleeve Round Neck T-shirts", show_label=False, elem_id="prompt")
-            example = gr.Examples(
-                inputs=garm_img,
-                examples_per_page=8,
-                examples=garm_list_path)
-        with gr.Column():
-            # image_out = gr.Image(label="Output", elem_id="output-img", height=400)
-            masked_img = gr.Image(label="Masked image output", elem_id="masked-img",show_share_button=False)
-        with gr.Column():
-            # image_out = gr.Image(label="Output", elem_id="output-img", height=400)
-            image_out = gr.Image(label="Output", elem_id="output-img",show_share_button=False)
-
-
-
-
-    with gr.Column():
-        try_button = gr.Button(value="Try-on")
-        with gr.Accordion(label="Advanced Settings", open=False):
+        with gr.TabItem("Fashion Catalog"):
             with gr.Row():
-                denoise_steps = gr.Number(label="Denoising Steps", minimum=20, maximum=40, value=30, step=1)
-                seed = gr.Number(label="Seed", minimum=-1, maximum=2147483647, step=1, value=42)
+                catalog_images = [gr.Image(value=item["image"], label=item["name"], type="filepath") for item in catalog]
 
+            with gr.Row():
+                catalog_buttons = [gr.Button(f"Try {item['name']}") for item in catalog]
 
+    # Connect the catalog buttons to update the garment image
+    for button, image in zip(catalog_buttons, catalog_images):
+        button.click(lambda x: x, inputs=[image], outputs=[garment_image])
 
-    try_button.click(fn=start_tryon, inputs=[imgs, garm_img, prompt, is_checked, category, is_checked_crop, denoise_steps, seed], outputs=[image_out,masked_img], api_name='tryon')
+    # Set up the try-on functionality
+    try_on_button.click(
+        start_tryon,
+        inputs=[
+            human_image,
+            garment_image,
+            description,
+            auto_mask,
+            category,
+            auto_crop,
+            denoise_steps,
+            seed
+        ],
+        outputs=[output_image, masked_image]
+    )
 
-            
-
-
-image_blocks.launch(share=True)
-
+if __name__ == "__main__":
+    demo.launch(share=True)
