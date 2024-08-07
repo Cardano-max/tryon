@@ -1,5 +1,6 @@
 import gradio as gr
 import sys
+import cv2
 sys.path.append('./')
 from PIL import Image
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
@@ -165,6 +166,32 @@ def pil_to_binary_mask(pil_image, threshold=0):
     output_mask = Image.fromarray(mask)
     return output_mask
 
+def face_blur(pil_image):
+      
+    # Reading an image using OpenCV 
+    # OpenCV reads images by default in BGR format 
+    image = np.array(pil_image)
+    # Converting BGR image into a RGB image 
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
+    
+    face_detect = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml') 
+    face_data = face_detect.detectMultiScale(image, 1.3, 5) 
+    
+    # Draw rectangle around the faces which is our region of interest (ROI) 
+    for (x, y, w, h) in face_data: 
+        roi = image[y:y+h, x:x+w] 
+        # applying a gaussian blur over this new rectangle area with increased intensity
+        roi = cv2.GaussianBlur(roi, (75, 75), 75) 
+        # impose this blurred image on original image to get final image 
+        image[y:y+roi.shape[0], x:x+roi.shape[1]] = roi 
+    
+    # Convert the NumPy array back to PIL Image
+    if pil_image.mode == 'RGBA':  # If the original image had an alpha channel
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
+    pil_image = Image.fromarray(image)
+    
+    return pil_image
+
 # Initialize all the models and configurations as in the original code
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
@@ -254,7 +281,8 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, is_checked_crop,
     pipe.unet_encoder.to(device)
 
     garm_img= garm_img.convert("RGB").resize((768,1024))
-    human_img_orig = dict["background"].convert("RGB")    
+    human_img = face_blur(dict["background"])
+    human_img_orig = human_img.convert("RGB")    
     
     if is_checked_crop:
         width, height = human_img_orig.size
