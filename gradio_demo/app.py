@@ -150,6 +150,7 @@ custom_css = """
     }
 """
 
+
 # Include all the necessary functions from the original code
 def pil_to_binary_mask(pil_image, threshold=0):
     np_image = np.array(pil_image)
@@ -394,7 +395,8 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
                 with gr.Column():
-                    human_image = gr.Image(label="Upload Your Photo", type="pil", sources="upload")
+                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True)
+    
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
@@ -429,7 +431,7 @@ with gr.Blocks(css=custom_css) as demo:
     try_on_button.click(
         start_tryon,
         inputs=[
-            human_image,
+            imgs,
             garment_image,
             description,
             auto_mask,
