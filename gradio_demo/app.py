@@ -1,6 +1,7 @@
 import gradio as gr
 import sys
 import cv2
+import uuid
 sys.path.append('./')
 from PIL import Image
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
@@ -167,29 +168,34 @@ def pil_to_binary_mask(pil_image, threshold=0):
     return output_mask
 
 def face_blur(pil_image):
-      
-    # Reading an image using OpenCV 
-    # OpenCV reads images by default in BGR format 
+    # Convert PIL Image to NumPy array
     image = np.array(pil_image)
-    # Converting BGR image into a RGB image 
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-    
-    face_detect = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml') 
-    face_data = face_detect.detectMultiScale(image, 1.3, 5) 
-    
-    # Draw rectangle around the faces which is our region of interest (ROI) 
-    for (x, y, w, h) in face_data: 
-        roi = image[y:y+h, x:x+w] 
-        # applying a gaussian blur over this new rectangle area with increased intensity
-        roi = cv2.GaussianBlur(roi, (75, 75), 75) 
-        # impose this blurred image on original image to get final image 
-        image[y:y+roi.shape[0], x:x+roi.shape[1]] = roi 
-    
+
+    # Convert RGBA to RGB if needed
+    if image.shape[2] == 4:  # Check if the image has an alpha channel
+        image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+    else:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    # Detect faces
+    face_detect = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml')
+    face_data = face_detect.detectMultiScale(image, 1.3, 5)
+
+    # Draw rectangle around the faces which is our region of interest (ROI)
+    for (x, y, w, h) in face_data:
+        roi = image[y:y+h, x:x+w]
+        # Apply a Gaussian blur over this new rectangle area with increased intensity
+        roi = cv2.GaussianBlur(roi, (75, 75), 75)
+        # Impose this blurred image on the original image to get the final image
+        image[y:y+roi.shape[0], x:x+roi.shape[1]] = roi
+
     # Convert the NumPy array back to PIL Image
     if pil_image.mode == 'RGBA':  # If the original image had an alpha channel
         image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
+    else:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     pil_image = Image.fromarray(image)
-    
+
     return pil_image
 
 # Initialize all the models and configurations as in the original code
@@ -274,15 +280,34 @@ pipe = TryonPipeline.from_pretrained(
 )
 pipe.unet_encoder = UNet_Encoder
 
-def start_tryon(dict,garm_img,garment_des,is_checked, category, is_checked_crop,denoise_steps,seed):
+def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_checked_crop,denoise_steps,seed):
     
     openpose_model.preprocessor.body_estimation.model.to(device)
     pipe.to(device)
     pipe.unet_encoder.to(device)
 
     garm_img= garm_img.convert("RGB").resize((768,1024))
-    human_img = face_blur(dict["background"])
-    human_img_orig = human_img.convert("RGB")    
+
+    if blur_face:
+        original_img = face_blur(dict["background"])
+    else:
+        original_img = dict["background"]
+
+    human_img_orig = original_img.convert("RGB")    
+
+    # Generate a unique identifier for filenames
+    unique_id = str(uuid.uuid4())
+
+    # Define the directory to save images
+    save_dir = "eval_images"
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Save the images with unique names
+    human_img_path = os.path.join(save_dir, f"{unique_id}_ORIGINAL.png")
+    masked_img_path = os.path.join(save_dir, f"{unique_id}_MASK.png")
+    output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
+
+    human_img_orig.save(human_img_path)
     
     if is_checked_crop:
         width, height = human_img_orig.size
@@ -388,8 +413,12 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, is_checked_crop,
     if is_checked_crop:
         out_img = images[0].resize(crop_size)        
         human_img_orig.paste(out_img, (int(left), int(top)))    
+        mask_gray.save(masked_img_path)
+        human_img_orig.save(output_img_path)
         return human_img_orig, mask_gray
     else:
+        mask_gray.save(masked_img_path)
+        images[0].save(output_img_path)
         return images[0], mask_gray
     # return images[0], mask_gray
 
@@ -427,6 +456,7 @@ with gr.Blocks(css=custom_css) as demo:
     
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
+                    blur_face = gr.Checkbox(label="Blur Faces", value=False)
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
                 with gr.Column():
@@ -464,6 +494,7 @@ with gr.Blocks(css=custom_css) as demo:
             description,
             auto_mask,
             category,
+            blur_face,
             auto_crop,
             denoise_steps,
             seed

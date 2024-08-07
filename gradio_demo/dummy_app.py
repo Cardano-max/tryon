@@ -140,38 +140,44 @@ def pil_to_binary_mask(pil_image, threshold=0):
     return output_mask
 
 def face_blur(pil_image):
-      
-    # Reading an image using OpenCV 
-    # OpenCV reads images by default in BGR format 
+    # Convert PIL Image to NumPy array
     image = np.array(pil_image)
-    # Converting BGR image into a RGB image 
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-    
-    face_detect = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml') 
-    face_data = face_detect.detectMultiScale(image, 1.3, 5) 
-    
-    # Draw rectangle around the faces which is our region of interest (ROI) 
-    for (x, y, w, h) in face_data: 
-        roi = image[y:y+h, x:x+w] 
-        # applying a gaussian blur over this new rectangle area with increased intensity
-        roi = cv2.GaussianBlur(roi, (75, 75), 75) 
-        # impose this blurred image on original image to get final image 
-        image[y:y+roi.shape[0], x:x+roi.shape[1]] = roi 
-    
+
+    # Convert RGBA to RGB if needed
+    if image.shape[2] == 4:  # Check if the image has an alpha channel
+        image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+    else:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    # Detect faces
+    face_detect = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml')
+    face_data = face_detect.detectMultiScale(image, 1.3, 5)
+
+    # Draw rectangle around the faces which is our region of interest (ROI)
+    for (x, y, w, h) in face_data:
+        roi = image[y:y+h, x:x+w]
+        # Apply a Gaussian blur over this new rectangle area with increased intensity
+        roi = cv2.GaussianBlur(roi, (75, 75), 75)
+        # Impose this blurred image on the original image to get the final image
+        image[y:y+roi.shape[0], x:x+roi.shape[1]] = roi
+
     # Convert the NumPy array back to PIL Image
     if pil_image.mode == 'RGBA':  # If the original image had an alpha channel
         image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
+    else:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     pil_image = Image.fromarray(image)
-    
+
     return pil_image
+
 
 
 def start_tryon(dict,garm_img,garment_des,is_checked, category, is_checked_crop,denoise_steps,seed):
     
 
     garm_img= garm_img.convert("RGB").resize((768,1024))
-    human_img = face_blur(dict["background"])
-    human_img_orig = human_img.convert("RGB")   
+    blur_face = face_blur(dict["background"])
+    human_img_orig = blur_face.convert("RGB")   
 
     print(type(dict['background']))
     print(dict['background']) 
