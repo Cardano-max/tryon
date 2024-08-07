@@ -394,13 +394,13 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
                 with gr.Column():
-                    human_image = gr.Image(label="Upload Your Photo", type="pil")
+                    human_image = gr.Image(label="Upload Your Photo", type="pil", sources="upload")
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
                 with gr.Column():
-                    garment_image = gr.Image(label="Upload or Select Garment", type="pil")
+                    garment_image = gr.Image(label="Upload or Select Garment", type="pil", sources="upload")
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
                 with gr.Column():
