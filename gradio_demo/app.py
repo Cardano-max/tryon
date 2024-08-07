@@ -287,12 +287,7 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
     pipe.unet_encoder.to(device)
 
     garm_img= garm_img.convert("RGB").resize((768,1024))
-
-    if blur_face:
-        original_img = face_blur(dict["background"])
-    else:
-        original_img = dict["background"]
-
+    original_img = dict["background"]
     human_img_orig = original_img.convert("RGB")    
 
     # Generate a unique identifier for filenames
@@ -307,7 +302,10 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
     masked_img_path = os.path.join(save_dir, f"{unique_id}_MASK.png")
     output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
 
-    human_img_orig.save(human_img_path)
+    if blur_face:
+        face_blur(human_img_orig).save(human_img_path)
+    else:
+        human_img_orig.save(human_img_path)
     
     if is_checked_crop:
         width, height = human_img_orig.size
@@ -412,13 +410,23 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
 
     if is_checked_crop:
         out_img = images[0].resize(crop_size)        
-        human_img_orig.paste(out_img, (int(left), int(top)))    
-        mask_gray.save(masked_img_path)
-        human_img_orig.save(output_img_path)
+        human_img_orig.paste(out_img, (int(left), int(top))) 
+
+        if blur_face:
+            face_blur(mask_gray).save(masked_img_path)
+            face_blur(human_img_orig).save(output_img_path)
+        else:  
+            mask_gray.save(masked_img_path)
+            human_img_orig.save(output_img_path)
+
         return human_img_orig, mask_gray
     else:
-        mask_gray.save(masked_img_path)
-        images[0].save(output_img_path)
+        if blur_face:
+            face_blur(mask_gray).save(masked_img_path)
+            face_blur(images[0]).save(output_img_path)
+        else:  
+            mask_gray.save(masked_img_path)
+            images[0].save(output_img_path)
         return images[0], mask_gray
     # return images[0], mask_gray
 
