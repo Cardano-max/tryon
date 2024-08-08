@@ -435,6 +435,8 @@ for ex_human in human_list_path:
     human_ex_list.append(ex_dict)
 
 def select_garment(garment_path):
+    if isinstance(garment_path, list):
+        garment_path = garment_path[0] 
     return Image.open(garment_path)
 
 with gr.Blocks(css=custom_css) as demo:
@@ -456,8 +458,9 @@ with gr.Blocks(css=custom_css) as demo:
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
                 with gr.Column(scale=3):
-                    garment_gallery = gr.Gallery(value=garm_list_path, label="Select a Garment", columns=3)
-                    garment_image = gr.Image(label="Selected Garment", type="pil", visible=False)
+                    garment_gallery = gr.Gallery(value=garm_list_path, label="Select a Garment", columns=3, elem_id="garment-gallery", show_label=False)
+                    garment_image = gr.Image(label="Selected Garment", type="pil", visible=True)
+                    garment_gallery.select(select_garment, inputs=garment_gallery, outputs=garment_image)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
             with gr.Row():
