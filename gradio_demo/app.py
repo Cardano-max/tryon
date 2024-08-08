@@ -437,7 +437,7 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
                 with gr.Column():
-                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True, height=400, width=300)
+                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True, height=height, width=width)
 
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
@@ -447,13 +447,13 @@ with gr.Blocks(css=custom_css) as demo:
                     category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="upper_body")
 
                 with gr.Column():
-                    garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=400, width=300)
+                    garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=height, width=width)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
                     # description = "Traditional Eastern dress"
                     # description = None
 
                 with gr.Column():
-                    output_image = gr.Image(label="Your Virtual Try-On", height=400, width=300)
+                    output_image = gr.Image(label="Your Virtual Try-On", height=height, width=width)
                     output_mask = gr.Image(label="Masked Image", visible=False)
 
             with gr.Row():
@@ -492,7 +492,7 @@ with gr.Blocks(css=custom_css) as demo:
             seed
         ],
         outputs=[output_image, output_mask],
-        trigger_mode="once"
+        trigger_mode="always_last"
     )
 
 if __name__ == "__main__":
