@@ -35,6 +35,7 @@ garment_images = os.listdir('./gradio_demo/example/cloth/')
 for i in range(len(garment_images)):
     catalog.append({"name": garment_images[i].split('.')[0], "image": f"gradio_demo/example/cloth/{garment_images[i]}", "description": "Traditional Eastern dress"})
 
+# Custom CSS for modern design
 custom_css = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     
@@ -66,15 +67,32 @@ custom_css = """
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         overflow: hidden;
     }
+    .tab-nav {
+        background-color: #2c2c2c;
+        padding: 1rem;
+    }
+    .tab-nav button {
+        background-color: transparent;
+        color: #bb86fc;
+        border: none;
+        padding: 0.5rem 1rem;
+        margin-right: 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        border-radius: 5px;
+    }
+    .tab-nav button:hover, .tab-nav button.selected {
+        background-color: #bb86fc;
+        color: #121212;
+    }
     .tab-content {
         padding: 2rem;
     }
     .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-        max-height: 400px;
-        overflow-y: auto;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
     }
     .card {
         background-color: #2c2c2c;
@@ -82,7 +100,6 @@ custom_css = """
         overflow: hidden;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         transition: all 0.3s;
-        cursor: pointer;
     }
     .card:hover {
         transform: translateY(-5px);
@@ -90,8 +107,11 @@ custom_css = """
     }
     .card img {
         width: 100%;
-        height: 150px;
+        height: 200px;
         object-fit: cover;
+    }
+    .card-content {
+        padding: 1rem;
     }
     .btn {
         background-color: #bb86fc;
@@ -111,25 +131,46 @@ custom_css = """
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
-    .model-images {
-        display: flex;
-        justify-content: space-around;
-        margin-bottom: 1rem;
+    .gradio-slider input[type="range"] {
+        background-color: #bb86fc;
     }
-    .model-image {
+    .gradio-slider input[type="range"]::-webkit-slider-thumb {
+        background-color: #03dac6;
+    }
+    .gradio-checkbox input[type="checkbox"] {
+        border-color: #bb86fc;
+    }
+    .gradio-checkbox input[type="checkbox"]:checked {
+        background-color: #bb86fc;
+    }
+    .gradio-radio label span {
+        border-color: #bb86fc;
+    }
+    .gradio-radio input[type="radio"]:checked + label span {
+        background-color: #bb86fc;
+    }
+    .garment-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .garment-item {
         width: 150px;
-        height: 200px;
-        object-fit: cover;
-        border-radius: 10px;
+        text-align: center;
         cursor: pointer;
         transition: all 0.3s;
     }
-    .model-image:hover {
+    .garment-item:hover {
         transform: scale(1.05);
-        box-shadow: 0 0 15px rgba(187, 134, 252, 0.5);
     }
-    .selected {
-        border: 3px solid #bb86fc;
+    .garment-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 5px;
     }
 """
 
@@ -165,6 +206,7 @@ def face_blur(pil_image):
     pil_image = Image.fromarray(image)
     return pil_image
 
+# Initialize all the models and configurations
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
 
@@ -245,18 +287,18 @@ pipe = TryonPipeline.from_pretrained(
 )
 pipe.unet_encoder = UNet_Encoder
 
-def start_tryon(human_img, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
+def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_checked_crop,denoise_steps,seed):
     openpose_model.preprocessor.body_estimation.model.to(device)
     pipe.to(device)
     pipe.unet_encoder.to(device)
 
-    garm_img = garm_img.convert("RGB").resize((768,1024))
-    human_img_orig = human_img.convert("RGB")    
+    garm_img= garm_img.convert("RGB").resize((768,1024))
+    original_img = dict["background"]
+    human_img_orig = original_img.convert("RGB")    
 
     unique_id = str(uuid.uuid4())
     save_dir = "eval_images"
     os.makedirs(save_dir, exist_ok=True)
-
     human_img_path = os.path.join(save_dir, f"{unique_id}_ORIGINAL.png")
     masked_img_path = os.path.join(save_dir, f"{unique_id}_MASK.png")
     output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
@@ -286,13 +328,13 @@ def start_tryon(human_img, garm_img, garment_des, is_checked, category, blur_fac
         mask, mask_gray = get_mask_location('hd', category, model_parse, keypoints)
         mask = mask.resize((768,1024))
     else:
-        mask = pil_to_binary_mask(human_img.convert("RGB").resize((768, 1024)))
+        mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
     mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
     mask_gray = to_pil_image((mask_gray+1.0)/2.0)
 
     human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
     human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
-    
+     
     args = apply_net.create_argument_parser().parse_args(('show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'))
     pose_img = args.func(args,human_img_arg)    
     pose_img = pose_img[:,:,::-1]    
@@ -335,25 +377,25 @@ def start_tryon(human_img, garm_img, garment_des, is_checked, category, blur_fac
                             negative_prompt=negative_prompt,
                         )
 
-                    pose_img =  tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
-                    garm_tensor =  tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
+                    pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device, torch.float16)
+                    garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device, torch.float16)
                     generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
                     images = pipe(
-                        prompt_embeds=prompt_embeds.to(device,torch.float16),
-                        negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
-                        pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
-                        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                        prompt_embeds=prompt_embeds.to(device, torch.float16),
+                        negative_prompt_embeds=negative_prompt_embeds.to(device, torch.float16),
+                        pooled_prompt_embeds=pooled_prompt_embeds.to(device, torch.float16),
+                        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device, torch.float16),
                         num_inference_steps=denoise_steps,
                         generator=generator,
-                        strength = 1.0,
-                        pose_img = pose_img.to(device,torch.float16),
-                        text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
-                        cloth = garm_tensor.to(device,torch.float16),
+                        strength=1.0,
+                        pose_img=pose_img.to(device, torch.float16),
+                        text_embeds_cloth=prompt_embeds_c.to(device, torch.float16),
+                        cloth=garm_tensor.to(device, torch.float16),
                         mask_image=mask,
                         image=human_img, 
                         height=1024,
                         width=768,
-                        ip_adapter_image = garm_img.resize((768,1024)),
+                        ip_adapter_image=garm_img.resize((768, 1024)),
                         guidance_scale=2.0,
                     )[0]
 
@@ -378,21 +420,23 @@ def start_tryon(human_img, garm_img, garment_des, is_checked, category, blur_fac
             images[0].save(output_img_path)
         return images[0], mask_gray
 
-garm_list = os.listdir(os.path.join(example_path,"cloth"))
-garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
+garm_list = os.listdir(os.path.join(example_path, "cloth"))
+garm_list_path = [os.path.join(example_path, "cloth", garm) for garm in garm_list]
 
-human_list = os.listdir(os.path.join(example_path,"human"))
-human_list_path = [os.path.join(example_path,"human",human) for human in human_list]
+human_list = os.listdir(os.path.join(example_path, "human"))
+human_list_path = [os.path.join(example_path, "human", human) for human in human_list]
 
 human_ex_list = []
 for ex_human in human_list_path:
-    ex_dict= {}
+    ex_dict = {}
     ex_dict['background'] = ex_human
     ex_dict['layers'] = None
     ex_dict['composite'] = None
     human_ex_list.append(ex_dict)
 
-image_blocks = gr.Blocks().queue()
+def select_garment(garment_path):
+    return Image.open(garment_path)
+
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
@@ -401,55 +445,41 @@ with gr.Blocks(css=custom_css) as demo:
         </div>
     """)
 
-    with gr.Row():
-        with gr.Column(scale=1):
-            gr.Markdown("### Choose a Model or Upload Your Photo")
-            model_images = [
-                "/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/example/image/image1.jpg",
-                "/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/example/image/image2.jpg",
-                "/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/example/image/image3.jpg"
-            ]
-            model_gallery = gr.Gallery(value=model_images, label="Choose a Model", elem_id="model-gallery", columns=3, height=200)
-            
-            uploaded_image = gr.Image(label="Or Upload Your Own Photo", type="pil", elem_id="uploaded-image")
+    with gr.Tabs() as tabs:
+        with gr.TabItem("Virtual Try-On"):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    imgs = gr.Image(label='Upload Your Photo', type="pil", tool="editor")
+                    auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
+                    auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
+                    blur_face = gr.Checkbox(label="Blur Faces", value=False)
+                    category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
-        with gr.Column(scale=2):
-            gr.Markdown("### Select a Garment")
-            garment_gallery = gr.Gallery(value=garm_list_path, label="Click to Select a Garment", elem_id="garment-gallery", columns=4, height=400)
-            selected_garment = gr.Image(label="Selected Garment", type="pil", elem_id="selected-garment")
+                with gr.Column(scale=3):
+                    garment_gallery = gr.Gallery(value=garm_list_path, label="Select a Garment", elem_id="garment-gallery", columns=3, object_fit="contain", height="400px")
+                    garment_image = gr.Image(label="Selected Garment", type="pil", visible=False)
+                    description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
-        with gr.Column(scale=2):
-            gr.Markdown("### Virtual Try-On Result")
-            output_image = gr.Image(label="Your Virtual Try-On")
-            masked_image = gr.Image(label="AI-Generated Mask")
+            with gr.Row():
+                with gr.Column(scale=1):
+                    try_on_button = gr.Button("Experience Your New Look!", variant="primary")
+                
+                with gr.Column(scale=2):
+                    output_image = gr.Image(label="Your Virtual Try-On")
+                    masked_image = gr.Image(label="AI-Generated Mask")
 
-    with gr.Row():
-        try_on_button = gr.Button("Experience Your New Look!", variant="primary")
+            with gr.Accordion("Advanced Customization", open=False):
+                denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
+                seed = gr.Number(label="Randomness Seed", value=42)
 
-    with gr.Accordion("Advanced Settings", open=False):
-        auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
-        auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
-        blur_face = gr.Checkbox(label="Blur Faces", value=False)
-        category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
-        denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
-        seed = gr.Number(label="Randomness Seed", value=42)
-        garment_description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
-
-    def update_model_image(evt: gr.SelectData):
-        return evt.value
-
-    def update_garment_image(evt: gr.SelectData):
-        return evt.value
-
-    model_gallery.select(update_model_image, None, uploaded_image)
-    garment_gallery.select(update_garment_image, None, selected_garment)
+    garment_gallery.select(select_garment, inputs=garment_gallery, outputs=garment_image)
 
     try_on_button.click(
         start_tryon,
         inputs=[
-            uploaded_image,
-            selected_garment,
-            garment_description,
+            imgs,
+            garment_image,
+            description,
             auto_mask,
             category,
             blur_face,
