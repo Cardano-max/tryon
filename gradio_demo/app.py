@@ -442,7 +442,8 @@ with gr.Blocks(css=custom_css) as demo:
                 with gr.Column():
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False)
                     # description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
-                    description = "Traditional Eastern dress"
+                    # description = "Traditional Eastern dress"
+                    description = None
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On")
@@ -465,9 +466,9 @@ with gr.Blocks(css=custom_css) as demo:
 
     def select_garment(evt: gr.SelectData):
         selected_garment = catalog[evt.index]
-        return PILImage.open(selected_garment["image"])
+        return PILImage.open(selected_garment["image"]), selected_garment["description"]
 
-    garment_gallery.select(select_garment, None, [garment_image])
+    garment_gallery.select(select_garment, None, [garment_image, description])
 
     try_on_button.click(
         start_tryon,
