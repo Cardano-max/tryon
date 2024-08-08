@@ -463,11 +463,10 @@ with gr.Blocks(css=custom_css) as demo:
             category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
         with gr.Column(scale=1):
-            with gr.Box():
-                gr.Markdown("### Select a Garment")
-                garment_gallery = gr.Gallery(value=garm_list_path, columns=2, rows=3, height=300, label="Garment Selection")
-                garment_image = gr.Image(label="Selected Garment", type="pil")
-                description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
+            gr.Markdown("### Select a Garment")
+            garment_gallery = gr.Gallery(value=garm_list_path, columns=2, rows=3, height=300, label="Garment Selection")
+            garment_image = gr.Image(label="Selected Garment", type="pil")
+            description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
         with gr.Column(scale=1):
             output_image = gr.Image(label="Your Virtual Try-On")
