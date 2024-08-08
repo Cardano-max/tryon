@@ -44,6 +44,12 @@ for i in range(len(garment_images)):
         "description": "Traditional Eastern dress"
     })
 
+category_dict = {
+    "Upper Body": "upper_body",
+    "Lower Body": "lower_body",
+    "Full Body": "dresses"
+}
+
 custom_css = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
@@ -309,7 +315,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
     if is_checked:
         keypoints = openpose_model(human_img.resize((384,512)))
         model_parse, _ = parsing_model(human_img.resize((384,512)))
-        mask, mask_gray = get_mask_location('hd', category, model_parse, keypoints)
+        mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints)
         mask = mask.resize((768,1024))
     else:
         mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
@@ -430,24 +436,24 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
                 with gr.Column():
-                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True)
+                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True, height=400, width=300)
 
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
                     # auto_mask = True
                     # auto_crop = False
                     blur_face = gr.Checkbox(label="Blur Faces", value=False)
-                    category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
+                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="upper_body")
 
                 with gr.Column():
-                    garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False)
+                    garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=400, width=300)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
                     # description = "Traditional Eastern dress"
                     # description = None
 
                 with gr.Column():
-                    output_image = gr.Image(label="Your Virtual Try-On")
-                    output_mask = gr.Image(label="Masked Image")
+                    output_image = gr.Image(label="Your Virtual Try-On", height=400, width=300)
+                    output_mask = gr.Image(label="Masked Image", visible=False)
 
             with gr.Row():
                 try_on_button = gr.Button("Experience Your New Look!", variant="primary")
