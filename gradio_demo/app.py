@@ -30,11 +30,11 @@ from torchvision.transforms.functional import to_pil_image
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 # Define the catalog items
-catalog = [
-    {"name": "T-Shirt", "image": "images/2.png", "description": "Classic cotton T-shirt"},
-    {"name": "Dress", "image": "images/2.png", "description": "Elegant evening dress"},
-    {"name": "Jacket", "image": "images/2.png", "description": "Stylish leather jacket"},
-]
+catalog = []
+# loop in this folder to get all the garment images
+garment_images = os.listdir('./gradio_demo/example/cloth/')
+for i in range(len(garment_images)):
+    catalog.append({"name": garment_images[i].split('.')[0], "image": f"gradio_demo/example/cloth/{garment_images[i]}", "description": "Traditional Eastern dress"})
 
 # Custom CSS for modern design
 custom_css = """
