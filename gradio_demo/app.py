@@ -443,7 +443,7 @@ with gr.Blocks(css=custom_css) as demo:
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
                     # description = "Traditional Eastern dress"
-                    description = None
+                    # description = None
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On")
