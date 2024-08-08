@@ -441,13 +441,13 @@ with gr.Blocks(css=custom_css) as demo:
 
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
-                    blur_face = gr.Checkbox(label="Blur Faces", value=False, width=width)
+                    blur_face = gr.Checkbox(label="Blur Faces", value=False)
                 with gr.Column():
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=height, width=width)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
                     # description = "Traditional Eastern dress"
                     # description = None
-                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body", width = width)
+                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body")
 
 
                 with gr.Column():
