@@ -447,6 +447,7 @@ with gr.Blocks(css=custom_css) as demo:
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On")
+                    output_mask = gr.Image(label="Masked Image")
 
             with gr.Row():
                 try_on_button = gr.Button("Experience Your New Look!", variant="primary")
@@ -483,7 +484,7 @@ with gr.Blocks(css=custom_css) as demo:
             denoise_steps,
             seed
         ],
-        outputs=[output_image]
+        outputs=[output_image, output_mask]
     )
 
 if __name__ == "__main__":
