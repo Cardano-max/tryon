@@ -432,10 +432,10 @@ with gr.Blocks(css=custom_css) as demo:
                 with gr.Column():
                     imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True)
 
-                    # auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
-                    # auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
-                    auto_mask = True
-                    auto_crop = False
+                    auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
+                    auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
+                    # auto_mask = True
+                    # auto_crop = False
                     blur_face = gr.Checkbox(label="Blur Faces", value=False)
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
