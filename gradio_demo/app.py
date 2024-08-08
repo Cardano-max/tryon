@@ -465,9 +465,9 @@ with gr.Blocks(css=custom_css) as demo:
 
     def select_garment(evt: gr.SelectData):
         selected_garment = catalog[evt.index]
-        return PILImage.open(selected_garment["image"]), selected_garment["description"]
+        return PILImage.open(selected_garment["image"])
 
-    garment_gallery.select(select_garment, None, [garment_image, description])
+    garment_gallery.select(select_garment, None, [garment_image])
 
     try_on_button.click(
         start_tryon,
