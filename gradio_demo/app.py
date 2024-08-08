@@ -431,7 +431,8 @@ with gr.Blocks(css=custom_css) as demo:
             <p>Step into the future of fashion with our AI-powered virtual wardrobe</p>
         </div>
     """)
-
+    height = 550
+    width = 450
     with gr.Tabs() as tabs:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
@@ -456,7 +457,7 @@ with gr.Blocks(css=custom_css) as demo:
                     output_mask = gr.Image(label="Masked Image", visible=False)
 
             with gr.Row():
-                try_on_button = gr.Button("Experience Your New Look!", variant="primary", trigger_mode="once")
+                try_on_button = gr.Button("Experience Your New Look!", variant="primary")
 
             with gr.Accordion("Advanced Customization", open=False):
                 denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
@@ -490,7 +491,8 @@ with gr.Blocks(css=custom_css) as demo:
             denoise_steps,
             seed
         ],
-        outputs=[output_image, output_mask]
+        outputs=[output_image, output_mask],
+        trigger_mode="once"
     )
 
 if __name__ == "__main__":
