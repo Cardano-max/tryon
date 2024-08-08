@@ -31,7 +31,6 @@ device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 # Define the catalog items
 catalog = []
-# loop in this folder to get all the garment images
 garment_images = os.listdir('./gradio_demo/example/cloth/')
 for i in range(len(garment_images)):
     catalog.append({"name": garment_images[i].split('.')[0], "image": f"gradio_demo/example/cloth/{garment_images[i]}", "description": "Traditional Eastern dress"})
@@ -150,8 +149,37 @@ custom_css = """
     .gradio-radio input[type="radio"]:checked + label span {
         background-color: #bb86fc;
     }
+    .garment-scroll {
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 10px;
+        background-color: #2c2c2c;
+        border-radius: 10px;
+    }
+    .garment-scroll img {
+        width: 100%;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    .garment-scroll img:hover {
+        transform: scale(1.05);
+    }
+    .model-images {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 20px;
+    }
+    .model-images img {
+        width: 30%;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+    .model-images img:hover {
+        transform: scale(1.05);
+    }
 """
-
 
 # Include all the necessary functions from the original code
 def pil_to_binary_mask(pil_image, threshold=0):
@@ -168,34 +196,22 @@ def pil_to_binary_mask(pil_image, threshold=0):
     return output_mask
 
 def face_blur(pil_image):
-    # Convert PIL Image to NumPy array
     image = np.array(pil_image)
-
-    # Convert RGBA to RGB if needed
-    if image.shape[2] == 4:  # Check if the image has an alpha channel
+    if image.shape[2] == 4:
         image = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
     else:
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-    # Detect faces
     face_detect = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml')
     face_data = face_detect.detectMultiScale(image, 1.3, 5)
-
-    # Draw rectangle around the faces which is our region of interest (ROI)
     for (x, y, w, h) in face_data:
         roi = image[y:y+h, x:x+w]
-        # Apply a Gaussian blur over this new rectangle area with increased intensity
         roi = cv2.GaussianBlur(roi, (75, 75), 75)
-        # Impose this blurred image on the original image to get the final image
         image[y:y+roi.shape[0], x:x+roi.shape[1]] = roi
-
-    # Convert the NumPy array back to PIL Image
-    if pil_image.mode == 'RGBA':  # If the original image had an alpha channel
+    if pil_image.mode == 'RGBA':
         image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
     else:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     pil_image = Image.fromarray(image)
-
     return pil_image
 
 # Initialize all the models and configurations as in the original code
@@ -242,7 +258,6 @@ vae = AutoencoderKL.from_pretrained(base_path,
                                     torch_dtype=torch.float16,
 )
 
-# "stabilityai/stable-diffusion-xl-base-1.0",
 UNet_Encoder = UNet2DConditionModel_ref.from_pretrained(
     base_path,
     subfolder="unet_encoder",
@@ -290,14 +305,9 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
     original_img = dict["background"]
     human_img_orig = original_img.convert("RGB")    
 
-    # Generate a unique identifier for filenames
     unique_id = str(uuid.uuid4())
-
-    # Define the directory to save images
     save_dir = "eval_images"
     os.makedirs(save_dir, exist_ok=True)
-
-    # Save the images with unique names
     human_img_path = os.path.join(save_dir, f"{unique_id}_ORIGINAL.png")
     masked_img_path = os.path.join(save_dir, f"{unique_id}_MASK.png")
     output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
@@ -321,7 +331,6 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
     else:
         human_img = human_img_orig.resize((768,1024))
 
-
     if is_checked:
         keypoints = openpose_model(human_img.resize((384,512)))
         model_parse, _ = parsing_model(human_img.resize((384,512)))
@@ -329,25 +338,18 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
         mask = mask.resize((768,1024))
     else:
         mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
-        # mask = transforms.ToTensor()(mask)
-        # mask = mask.unsqueeze(0)
     mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
     mask_gray = to_pil_image((mask_gray+1.0)/2.0)
-
 
     human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
     human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
      
-    
-
     args = apply_net.create_argument_parser().parse_args(('show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'))
-    # verbosity = getattr(args, "verbosity", None)
     pose_img = args.func(args,human_img_arg)    
     pose_img = pose_img[:,:,::-1]    
     pose_img = Image.fromarray(pose_img).resize((768,1024))
     
     with torch.no_grad():
-        # Extract the images
         with torch.cuda.amp.autocast():
             with torch.no_grad():
                 prompt = "model is wearing " + garment_des
@@ -383,8 +385,6 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
                             do_classifier_free_guidance=False,
                             negative_prompt=negative_prompt,
                         )
-
-
 
                     pose_img =  tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
                     garm_tensor =  tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
@@ -428,7 +428,6 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
             mask_gray.save(masked_img_path)
             images[0].save(output_img_path)
         return images[0], mask_gray
-    # return images[0], mask_gray
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
 garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
@@ -444,10 +443,9 @@ for ex_human in human_list_path:
     ex_dict['composite'] = None
     human_ex_list.append(ex_dict)
 
-##default human
+def select_garment(evt: gr.SelectData):
+    return garm_list_path[evt.index]
 
-
-image_blocks = gr.Blocks().queue()
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
@@ -456,44 +454,41 @@ with gr.Blocks(css=custom_css) as demo:
         </div>
     """)
 
-    with gr.Tabs() as tabs:
-        with gr.TabItem("Virtual Try-On"):
-            with gr.Row():
-                with gr.Column():
-                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True)
-    
-                    auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
-                    auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
-                    blur_face = gr.Checkbox(label="Blur Faces", value=False)
-                    category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
+    with gr.Row():
+        with gr.Column(scale=1):
+            imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True)
+            auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
+            auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
+            blur_face = gr.Checkbox(label="Blur Faces", value=False)
+            category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
-                with gr.Column():
-                    garment_image = gr.Image(label="Upload or Select Garment", type="pil", sources="upload")
-                    description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
+        with gr.Column(scale=1):
+            with gr.Box():
+                gr.Markdown("### Select a Garment")
+                garment_gallery = gr.Gallery(value=garm_list_path, columns=2, rows=3, height=300, label="Garment Selection")
+                garment_image = gr.Image(label="Selected Garment", type="pil")
+                description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
-                with gr.Column():
-                    output_image = gr.Image(label="Your Virtual Try-On")
-                    masked_image = gr.Image(label="AI-Generated Mask")
+        with gr.Column(scale=1):
+            output_image = gr.Image(label="Your Virtual Try-On")
+            masked_image = gr.Image(label="AI-Generated Mask")
 
-            with gr.Row():
-                try_on_button = gr.Button("Experience Your New Look!", variant="primary")
+    with gr.Row():
+        try_on_button = gr.Button("Experience Your New Look!", variant="primary")
 
-            with gr.Accordion("Advanced Customization", open=False):
-                denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
-                seed = gr.Number(label="Randomness Seed", value=42)
+    with gr.Accordion("Advanced Customization", open=False):
+        denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
+        seed = gr.Number(label="Randomness Seed", value=42)
 
-        with gr.TabItem("Fashion Catalog"):
-            with gr.Row():
-                catalog_images = [gr.Image(value=item["image"], label=item["name"], type="filepath") for item in catalog]
+    gr.Markdown("### Choose a Model (Optional)")
+    with gr.Row():
+        model_images = [gr.Image(value=path, type="filepath") for path in human_list_path[:3]]
 
-            with gr.Row():
-                catalog_buttons = [gr.Button(f"Try {item['name']}") for item in catalog]
+    garment_gallery.select(select_garment, None, garment_image)
 
-    # Connect the catalog buttons to update the garment image
-    for button, image in zip(catalog_buttons, catalog_images):
-        button.click(lambda x: x, inputs=[image], outputs=[garment_image])
+    for model_img in model_images:
+        model_img.click(lambda x: {"background": x}, inputs=[model_img], outputs=[imgs])
 
-    # Set up the try-on functionality
     try_on_button.click(
         start_tryon,
         inputs=[
