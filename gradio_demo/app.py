@@ -156,6 +156,9 @@ custom_css = """
         justify-content: center;
         max-height: 400px;
         overflow-y: auto;
+        padding: 1rem;
+        background-color: #1e1e1e;
+        border-radius: 10px;
     }
     .garment-item {
         width: 150px;
@@ -171,6 +174,10 @@ custom_css = """
         height: 150px;
         object-fit: cover;
         border-radius: 5px;
+    }
+    .garment-item p {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
     }
 """
 
@@ -293,12 +300,13 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
     pipe.unet_encoder.to(device)
 
     garm_img= garm_img.convert("RGB").resize((768,1024))
-    original_img = dict["background"]
+    original_img = dict["image"]
     human_img_orig = original_img.convert("RGB")    
 
     unique_id = str(uuid.uuid4())
     save_dir = "eval_images"
     os.makedirs(save_dir, exist_ok=True)
+
     human_img_path = os.path.join(save_dir, f"{unique_id}_ORIGINAL.png")
     masked_img_path = os.path.join(save_dir, f"{unique_id}_MASK.png")
     output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
@@ -328,7 +336,7 @@ def start_tryon(dict,garm_img,garment_des,is_checked, category, blur_face, is_ch
         mask, mask_gray = get_mask_location('hd', category, model_parse, keypoints)
         mask = mask.resize((768,1024))
     else:
-        mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
+        mask = pil_to_binary_mask(dict['mask'].convert("RGB").resize((768, 1024)))
     mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
     mask_gray = to_pil_image((mask_gray+1.0)/2.0)
 
@@ -429,15 +437,9 @@ human_list_path = [os.path.join(example_path, "human", human) for human in human
 human_ex_list = []
 for ex_human in human_list_path:
     ex_dict = {}
-    ex_dict['background'] = ex_human
-    ex_dict['layers'] = None
-    ex_dict['composite'] = None
+    ex_dict['image'] = ex_human
+    ex_dict['mask'] = None
     human_ex_list.append(ex_dict)
-
-def select_garment(garment_path):
-    if isinstance(garment_path, list):
-        garment_path = garment_path[0] 
-    return Image.open(garment_path)
 
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
@@ -451,23 +453,22 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
                 with gr.Column(scale=2):
-                    imgs = gr.Image(label='Upload Your Photo', type="pil")
+                    imgs = gr.Image(label="Upload Your Photo", type="pil", tool="sketch")
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
                     blur_face = gr.Checkbox(label="Blur Faces", value=False)
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
-
+                
                 with gr.Column(scale=3):
-                    garment_gallery = gr.Gallery(value=garm_list_path, label="Select a Garment", columns=3, elem_id="garment-gallery", show_label=False)
-                    garment_image = gr.Image(label="Selected Garment", type="pil", visible=True)
-                    garment_gallery.select(select_garment, inputs=garment_gallery, outputs=garment_image)
+                    garment_gallery = gr.Gallery(value=garm_list_path, label="Garment Catalog", elem_classes="garment-gallery").style(grid=4, height="auto")
+                    selected_garment = gr.State(value=None)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
             with gr.Row():
-                with gr.Column(scale=1):
+                with gr.Column(scale=2):
                     try_on_button = gr.Button("Experience Your New Look!", variant="primary")
                 
-                with gr.Column(scale=2):
+                with gr.Column(scale=3):
                     output_image = gr.Image(label="Your Virtual Try-On")
                     masked_image = gr.Image(label="AI-Generated Mask")
 
@@ -475,13 +476,16 @@ with gr.Blocks(css=custom_css) as demo:
                 denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
                 seed = gr.Number(label="Randomness Seed", value=42)
 
-    garment_gallery.select(select_garment, inputs=garment_gallery, outputs=garment_image)
+    def select_garment(evt: gr.SelectData):
+        return garm_list_path[evt.index]
+
+    garment_gallery.select(select_garment, None, selected_garment)
 
     try_on_button.click(
         start_tryon,
         inputs=[
             imgs,
-            garment_image,
+            selected_garment,
             description,
             auto_mask,
             category,
