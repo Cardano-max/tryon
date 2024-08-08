@@ -456,7 +456,7 @@ with gr.Blocks(css=custom_css) as demo:
                     output_mask = gr.Image(label="Masked Image", visible=False)
 
             with gr.Row():
-                try_on_button = gr.Button("Experience Your New Look!", variant="primary")
+                try_on_button = gr.Button("Experience Your New Look!", variant="primary", trigger_mode="once")
 
             with gr.Accordion("Advanced Customization", open=False):
                 denoise_steps = gr.Slider(minimum=20, maximum=40, value=30, step=1, label="AI Processing Intensity")
