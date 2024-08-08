@@ -34,6 +34,9 @@ device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 catalog = []
 garment_images = os.listdir('./gradio_demo/example/cloth/')
 for i in range(len(garment_images)):
+    # If the file is not an image, skip it
+    if not garment_images[i].endswith(('.png', '.jpg', '.jpeg', '.webp')):
+        continue
     image_path = f"gradio_demo/example/cloth/{garment_images[i]}"
     catalog.append({
         "name": garment_images[i].split('.')[0],
@@ -43,7 +46,7 @@ for i in range(len(garment_images)):
 
 custom_css = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-    
+
     body, .gradio-container {
         font-family: 'Poppins', sans-serif;
         background-color: #121212;
@@ -275,7 +278,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
     garm_img = garm_img.convert("RGB").resize((768,1024))
     original_img = dict["background"]
-    human_img_orig = original_img.convert("RGB")    
+    human_img_orig = original_img.convert("RGB")
 
     unique_id = str(uuid.uuid4())
     save_dir = "eval_images"
@@ -288,7 +291,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         face_blur(human_img_orig).save(human_img_path)
     else:
         human_img_orig.save(human_img_path)
-    
+
     if is_checked_crop:
         width, height = human_img_orig.size
         target_width = int(min(width, height * (3 / 4)))
@@ -315,12 +318,12 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
     human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
     human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
-     
+
     args = apply_net.create_argument_parser().parse_args(('show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'))
-    pose_img = args.func(args,human_img_arg)    
-    pose_img = pose_img[:,:,::-1]    
+    pose_img = args.func(args,human_img_arg)
+    pose_img = pose_img[:,:,::-1]
     pose_img = Image.fromarray(pose_img).resize((768,1024))
-    
+
     with torch.no_grad():
         with torch.cuda.amp.autocast():
             with torch.no_grad():
@@ -338,7 +341,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                         do_classifier_free_guidance=True,
                         negative_prompt=negative_prompt,
                     )
-                                    
+
                     prompt = "a photo of " + garment_des
                     negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
                     if not isinstance(prompt, List):
@@ -373,7 +376,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                         text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
                         cloth=garm_tensor.to(device,torch.float16),
                         mask_image=mask,
-                        image=human_img, 
+                        image=human_img,
                         height=1024,
                         width=768,
                         ip_adapter_image=garm_img.resize((768,1024)),
@@ -381,13 +384,13 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                     )[0]
 
     if is_checked_crop:
-        out_img = images[0].resize(crop_size)        
-        human_img_orig.paste(out_img, (int(left), int(top))) 
+        out_img = images[0].resize(crop_size)
+        human_img_orig.paste(out_img, (int(left), int(top)))
 
         if blur_face:
             face_blur(mask_gray).save(masked_img_path)
             face_blur(human_img_orig).save(output_img_path)
-        else:  
+        else:
             mask_gray.save(masked_img_path)
             human_img_orig.save(output_img_path)
 
@@ -396,7 +399,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         if blur_face:
             face_blur(mask_gray).save(masked_img_path)
             face_blur(images[0]).save(output_img_path)
-        else:  
+        else:
             mask_gray.save(masked_img_path)
             images[0].save(output_img_path)
         return images[0], mask_gray
@@ -428,19 +431,21 @@ with gr.Blocks(css=custom_css) as demo:
             with gr.Row():
                 with gr.Column():
                     imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True)
-    
-                    auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
-                    auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
+
+                    # auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True)
+                    # auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False)
+                    auto_mask = True
+                    auto_crop = False
                     blur_face = gr.Checkbox(label="Blur Faces", value=False)
                     category = gr.Radio(["upper_body", "lower_body", "dresses"], label="Garment Category", value="upper_body")
 
                 with gr.Column():
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False)
-                    description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
+                    # description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
+                    description = "Traditional Eastern dress"
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On")
-                    masked_image = gr.Image(label="AI-Generated Mask")
 
             with gr.Row():
                 try_on_button = gr.Button("Experience Your New Look!", variant="primary")
@@ -477,7 +482,7 @@ with gr.Blocks(css=custom_css) as demo:
             denoise_steps,
             seed
         ],
-        outputs=[output_image, masked_image]
+        outputs=[output_image]
     )
 
 if __name__ == "__main__":
