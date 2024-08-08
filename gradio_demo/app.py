@@ -26,15 +26,18 @@ from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
+from PIL import Image as PILImage
+
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 catalog = []
 garment_images = os.listdir('./gradio_demo/example/cloth/')
 for i in range(len(garment_images)):
+    image_path = f"gradio_demo/example/cloth/{garment_images[i]}"
     catalog.append({
         "name": garment_images[i].split('.')[0],
-        "image": f"gradio_demo/example/cloth/{garment_images[i]}",
+        "image": image_path,
         "description": "Traditional Eastern dress"
     })
 
@@ -448,11 +451,16 @@ with gr.Blocks(css=custom_css) as demo:
 
         with gr.TabItem("Fashion Catalog"):
             with gr.Row():
-                garment_gallery = gr.Gallery(value=catalog, columns=4, show_label=False, elem_id="garment_gallery").style(grid=4, height="auto")
+                garment_gallery = gr.Gallery(
+                    value=[item["image"] for item in catalog],
+                    columns=4,
+                    show_label=False,
+                    elem_id="garment_gallery"
+                ).style(grid=4, height="auto")
 
     def select_garment(evt: gr.SelectData):
         selected_garment = catalog[evt.index]
-        return gr.Image.update(value=selected_garment["image"]), selected_garment["description"]
+        return PILImage.open(selected_garment["image"]), selected_garment["description"]
 
     garment_gallery.select(select_garment, None, [garment_image, description])
 
