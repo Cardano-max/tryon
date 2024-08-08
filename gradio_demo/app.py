@@ -456,7 +456,7 @@ with gr.Blocks(css=custom_css) as demo:
                     columns=4,
                     show_label=False,
                     elem_id="garment_gallery"
-                ).style(grid=4, height="auto")
+                )
 
     def select_garment(evt: gr.SelectData):
         selected_garment = catalog[evt.index]
