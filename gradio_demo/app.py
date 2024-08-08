@@ -416,7 +416,7 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.Column(scale=2):
             gr.Markdown("### Select a Garment")
             garment_gallery = gr.Gallery(value=garm_list_path, label="Click to Select a Garment", elem_id="garment-gallery", columns=4, height=400)
-            selected_garment = gr.Image(label="Selected Garment", type="pil", elem_id="selected-garment", visible=False)
+            selected_garment = gr.Image(label="Selected Garment", type="pil", elem_id="selected-garment")
 
         with gr.Column(scale=2):
             gr.Markdown("### Virtual Try-On Result")
@@ -436,10 +436,10 @@ with gr.Blocks(css=custom_css) as demo:
         garment_description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details")
 
     def update_model_image(evt: gr.SelectData):
-        return gr.Image.update(value=evt.value, visible=True)
+        return evt.value
 
     def update_garment_image(evt: gr.SelectData):
-        return gr.Image.update(value=evt.value, visible=True)
+        return evt.value
 
     model_gallery.select(update_model_image, None, uploaded_image)
     garment_gallery.select(update_garment_image, None, selected_garment)
