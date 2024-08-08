@@ -198,10 +198,10 @@ def face_blur(pil_image):
     return pil_image
 
 def activate_button():
-    try_on_button.update(interactive=True)
+    return gr.update(interactive=True)
 
 def deactivate_button():
-    try_on_button.update(interactive=False)
+    return gr.update(interactive=False)
 
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
@@ -284,7 +284,8 @@ pipe = TryonPipeline.from_pretrained(
 pipe.unet_encoder = UNet_Encoder
 
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
-    deactivate_button()
+    global try_on_button
+    try_on_button = deactivate_button()
     openpose_model.preprocessor.body_estimation.model.to(device)
     pipe.to(device)
     pipe.unet_encoder.to(device)
@@ -415,6 +416,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         else:
             mask_gray.save(masked_img_path)
             images[0].save(output_img_path)
+        try_on_button = activate_button()
         return images[0], mask_gray
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
@@ -461,7 +463,7 @@ with gr.Blocks(css=custom_css) as demo:
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On", height=height, width=width)
-                    output_image.change(activate_button)
+                    # output_image.change(activate_button)
                     output_mask = gr.Image(label="Masked Image", visible=False)
 
             with gr.Row():
