@@ -1,3 +1,5 @@
+# git clone https://github.com/hasnain3142/arbi-tryon.git
+# chmod +x setup.sh
 #!/bin/bash
 
 # Download parsing_atr.onnx

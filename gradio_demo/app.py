@@ -437,7 +437,7 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On"):
             with gr.Row():
                 with gr.Column():
-                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True, height=height, width=width, layers=False, brush=False, eraser=False)
+                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Upload Your Photo', interactive=True, height=height, width=width, layers=False, brush=False, eraser=False, transforms=[])
 
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
