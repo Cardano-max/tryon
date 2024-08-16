@@ -248,8 +248,10 @@ UNet_Encoder = UNet2DConditionModel_ref.from_pretrained(
     torch_dtype=torch.float16,
 )
 
-parsing_model = Parsing(0)
-openpose_model = OpenPose(0)
+model_idx = '0' if torch.cuda.is_available() else -1
+
+parsing_model = Parsing(model_idx)
+openpose_model = OpenPose(model_idx)
 
 UNet_Encoder.requires_grad_(False)
 image_encoder.requires_grad_(False)
