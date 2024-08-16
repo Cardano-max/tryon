@@ -6,7 +6,6 @@ dependencies:
   - python=3.10.0
   - pytorch=2.0.1
   - torchaudio=2.0.2
-  - torchtriton=2.0.0
   - torchvision=0.15.2
   - pip=23.3.1
 
