@@ -367,6 +367,8 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
     else:
         mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
 
+    mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
+    mask_gray = to_pil_image((mask_gray+1.0)/2.0)
     human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
     human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
 

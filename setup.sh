@@ -24,8 +24,5 @@ source ~/.bashrc
 # Create conda environment
 conda env create -f environment.yaml
 
-# Activate conda environment
-conda activate idm
-
-# Run the server
-python gradio_demo/app.py
+# Setup done
+echo "Setup Completed!"
