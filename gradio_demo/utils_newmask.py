@@ -85,9 +85,11 @@ class Masking:
         mask = np.logical_and(mask, np.logical_not(hand_arm_mask))
 
         mask_pil = Image.fromarray((mask * 255).astype(np.uint8))
+        mask_gray = Image.fromarray((mask * 127).astype(np.uint8))
+        mask_gray = mask_gray.resize(img.size, Image.LANCZOS)
         mask_pil = mask_pil.resize(img.size, Image.LANCZOS)
         
-        return mask_pil
+        return mask_pil, mask_gray
 
     def create_precise_hand_mask(self, image):
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
