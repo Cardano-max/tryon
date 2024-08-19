@@ -29,6 +29,9 @@ from preprocess.openpose.run_openpose import OpenPose
 from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
 from PIL import Image as PILImage
+import mediapipe as mp
+import numpy as np
+import cv2
 
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -326,6 +329,38 @@ pipe = TryonPipeline.from_pretrained(
 )
 pipe.unet_encoder = UNet_Encoder
 
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
+
+def is_full_body_image(image):
+    image_np = np.array(image)
+    image_rgb = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+    results = pose.process(image_rgb)
+    
+    if not results.pose_landmarks:
+        return False
+    
+    landmarks = results.pose_landmarks.landmark
+    
+    # Check if key points are visible
+    key_points = [
+        mp_pose.PoseLandmark.NOSE,
+        mp_pose.PoseLandmark.LEFT_SHOULDER,
+        mp_pose.PoseLandmark.RIGHT_SHOULDER,
+        mp_pose.PoseLandmark.LEFT_HIP,
+        mp_pose.PoseLandmark.RIGHT_HIP,
+        mp_pose.PoseLandmark.LEFT_ANKLE,
+        mp_pose.PoseLandmark.RIGHT_ANKLE,
+        mp_pose.PoseLandmark.LEFT_WRIST,
+        mp_pose.PoseLandmark.RIGHT_WRIST
+    ]
+    
+    for point in key_points:
+        if landmarks[point].visibility < 0.5:
+            return False
+    
+    return True
+
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     openpose_model.preprocessor.body_estimation.model.to(device)
     pipe.to(device)
@@ -334,6 +369,10 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
     garm_img = garm_img.convert("RGB").resize((768,1024))
     original_img = dict["background"]
     human_img_orig = original_img.convert("RGB")
+
+    # Check if the image contains a full-body pose
+    if not is_full_body_image(human_img_orig):
+        return None, None, "Please upload a full-body image showing your entire body, including head, hands, and feet."
 
     unique_id = str(uuid.uuid4())
     save_dir = "eval_images"
@@ -533,21 +572,30 @@ with gr.Blocks(css=custom_css, theme='gradio/soft') as demo:
         return PILImage.open(selected_garment["garment_image"]), selected_garment["description"], gr.Tabs(selected=1)
 
     garment_gallery.select(select_garment, None, [garment_image, description, tabs])
-    try_on_button.click(
-        start_tryon,
-        inputs=[
-            imgs,
-            garment_image,
-            description,
-            auto_mask,
-            category,
-            blur_face,
-            auto_crop,
-            denoise_steps,
-            seed
-        ],
-        outputs=[output_image, output_mask]
-    )
+
+# Update the try_on_button.click function
+def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
+    result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
+    if error_message:
+        return None, None, error_message
+    return result_image, mask_image, ""
+
+
+try_on_button.click(
+    process_tryon,
+    inputs=[
+        imgs,
+        garment_image,
+        description,
+        auto_mask,
+        category,
+        blur_face,
+        auto_crop,
+        denoise_steps,
+        seed
+    ],
+    outputs=[output_image, output_mask, gr.Textbox(label="Error Message")]
+)
 
 if __name__ == "__main__":
     demo.launch(share=True)
