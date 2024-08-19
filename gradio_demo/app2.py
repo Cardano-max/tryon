@@ -20,8 +20,7 @@ import torch
 import os
 from transformers import AutoTokenizer
 import numpy as np
-from utils_mask import get_mask_location
-from utils_newmask import Masking
+from utils_mask_demo import Masking
 from torchvision import transforms
 import apply_net
 from preprocess.humanparsing.run_parsing import Parsing
