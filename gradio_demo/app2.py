@@ -509,7 +509,14 @@ for ex_human in human_list_path:
     ex_dict['composite'] = None
     human_ex_list.append(ex_dict)
 
-with gr.Blocks(css=custom_css, theme='gradio/soft') as demo:
+# Update the try_on_button.click function
+def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
+    result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
+    if error_message:
+        return None, None, error_message
+    return result_image, mask_image, ""
+
+with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
             <h2>Arbi-TryOn</h2>
@@ -535,8 +542,6 @@ with gr.Blocks(css=custom_css, theme='gradio/soft') as demo:
                     allow_preview=False,
                     min_width=250
                 )
-                def change_tab():
-                    gr.Tabs.update(selected=2)
 
         with gr.TabItem("Virtual Try-On", id=1):
             with gr.Row():
@@ -549,14 +554,10 @@ with gr.Blocks(css=custom_css, theme='gradio/soft') as demo:
                 with gr.Column():
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=height, width=width)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
-                    # description = "Traditional Eastern dress"
-                    # description = None
                     category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body", visible=False)
-
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On", height=height, width=width, interactive=False)
-                    # output_image.change(activate_button)
                     output_mask = gr.Image(label="Masked Image", visible=False)
 
             with gr.Row():
@@ -572,29 +573,23 @@ with gr.Blocks(css=custom_css, theme='gradio/soft') as demo:
 
     garment_gallery.select(select_garment, None, [garment_image, description, tabs])
 
-# Update the try_on_button.click function
-def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
-    result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
-    if error_message:
-        return None, None, error_message
-    return result_image, mask_image, ""
-
-
-try_on_button.click(
-    process_tryon,
-    inputs=[
-        imgs,
-        garment_image,
-        description,
-        auto_mask,
-        category,
-        blur_face,
-        auto_crop,
-        denoise_steps,
-        seed
-    ],
-    outputs=[output_image, output_mask, gr.Textbox(label="Error Message")]
-)
+    try_on_button.click(
+        process_tryon,
+        inputs=[
+            imgs,
+            garment_image,
+            description,
+            auto_mask,
+            category,
+            blur_face,
+            auto_crop,
+            denoise_steps,
+            seed
+        ],
+        outputs=[output_image, output_mask, gr.Textbox(label="Error Message")]
+    )
 
 if __name__ == "__main__":
     demo.launch(share=True)
+
+
