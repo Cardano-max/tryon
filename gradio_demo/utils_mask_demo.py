@@ -68,18 +68,25 @@ class Masking:
         hand_mask = self.create_precise_hand_mask(img_np)
         arm_mask = np.isin(parse_array, [self.label_map["left_arm"], self.label_map["right_arm"]])
         
-        # Combine hand and arm masks without dilation
+        # Combine hand and arm masks
         hand_arm_mask = np.logical_or(hand_mask, arm_mask)
+        
+        # Dilate the hand and arm mask slightly
+        kernel = np.ones((3,3), np.uint8)
+        hand_arm_mask = cv2.dilate(hand_arm_mask.astype(np.uint8), kernel, iterations=1)
         
         # Remove hand and arm regions from the garment mask
         mask = np.logical_and(mask, np.logical_not(hand_arm_mask))
 
         # Refine the mask
         mask = self.refine_mask(mask)
-        mask = self.smooth_edges(mask, sigma=0.5)
+        mask = self.smooth_edges(mask, sigma=1.0)
 
         # Ensure the mask covers the full garment
         mask = self.fill_garment_gaps(mask, parse_array, category)
+
+        # Expand the mask slightly
+        mask = self.expand_mask(mask)
 
         # Reapply hand and arm mask to ensure they're not covered
         mask = np.logical_and(mask, np.logical_not(hand_arm_mask))
@@ -114,21 +121,21 @@ class Masking:
         
         # Apply minimal morphological operations
         kernel = np.ones((3,3), np.uint8)
-        mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel, iterations=1)
+        mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel, iterations=2)
         
         # Find contours and keep only the largest one
         contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
             mask_refined = np.zeros_like(mask_uint8)
-            cv2.drawContours(mask_refined, [largest_contour], 0, 255, 1)  # Thin outline
+            cv2.drawContours(mask_refined, [largest_contour], 0, 255, 2)  # Slightly thicker outline
             mask_refined = cv2.fillPoly(mask_refined, [largest_contour], 255)
         else:
             mask_refined = mask_uint8
         
         return mask_refined > 0
 
-    def smooth_edges(self, mask, sigma=0.5):
+    def smooth_edges(self, mask, sigma=1.0):
         mask_float = mask.astype(float)
         mask_blurred = ndimage.gaussian_filter(mask_float, sigma=sigma)
         mask_smooth = (mask_blurred > 0.5).astype(np.uint8)
@@ -160,6 +167,11 @@ class Masking:
             if np.sum(region) < min_size:
                 mask[region] = 0
         return mask
+
+    def expand_mask(self, mask, expansion=3):
+        kernel = np.ones((expansion, expansion), np.uint8)
+        expanded_mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
+        return expanded_mask > 0
 
 def process_images(input_folder, output_folder, category):
     masker = Masking()
