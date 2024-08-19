@@ -362,7 +362,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         human_img = human_img_orig.resize((768,1024))
 
     if is_checked:
-        mask, garment_mask = masker.get_mask(human_img, category_dict[category])
+        mask = masker.get_mask(human_img, category_dict[category])
         mask = mask.resize((768,1024))
     else:
         mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
@@ -453,7 +453,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         else:
             garment_mask.save(masked_img_path)
             images[0].save(output_img_path)
-        return images[0], garment_mask
+        return images[0], mask
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
 garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
