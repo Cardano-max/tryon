@@ -236,8 +236,8 @@ def process_images(input_folder, output_folder, category):
 
 
 if __name__ == "__main__":
-    input_folder = Path("/ckpt/im_in")
-    output_folder = Path("/output")
+    input_folder = Path("/im_in")
+    output_folder = Path("/out")
     category = "dresses"  # Change to "upper_body", "lower_body", or "dresses" as needed
     
     process_images(str(input_folder), str(output_folder), category)
