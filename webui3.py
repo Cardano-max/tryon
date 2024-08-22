@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
 import os
 import time
 import traceback
