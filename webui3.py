@@ -16,7 +16,7 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from gradio_demo.utils_mask import Masking
+from preprocess.masking import Masking
 import os
 print(sys.path)
 
@@ -26,15 +26,13 @@ os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 # Initialize Masker
 masker = Masking()
 
-# Function to generate mask
 def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
     
     inpaint_mask = masker.get_mask(person_image, category=category)
-    return inpaint_mask
+    return np.array(inpaint_mask)  # Convert to numpy array
 
-# Main function for virtual try-on
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
         # Load person image
