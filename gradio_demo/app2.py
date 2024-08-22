@@ -31,6 +31,9 @@ from PIL import Image as PILImage
 import mediapipe as mp
 import numpy as np
 import cv2
+import sys
+sys.path.append('/tryon/structure/defocus')
+
 
 # Import the Defocus virtual_try_on function
 from structure.defocus.webui3 import virtual_try_on as defocus_virtual_try_on
