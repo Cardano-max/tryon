@@ -3,7 +3,7 @@ import json
 import math
 import numbers
 from structure.defocus import args_manager
-import modules.flags
+from structure.defocus.modules import flags
 import modules.sdxl_styles
 
 from modules.model_loader import load_file_from_url
