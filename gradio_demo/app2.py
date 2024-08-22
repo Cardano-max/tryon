@@ -355,7 +355,7 @@ def is_full_body_image(image):
     ]
     
     for point in key_points:
-        if landmarks[point].visibility < 0.5:
+        if landmarks[point].visibility < 0.1:
             return False
     
     return True
