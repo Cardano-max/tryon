@@ -2,7 +2,7 @@ import os
 import json
 import math
 import numbers
-import args_manager
+from structure.defocus import args_manager
 import modules.flags
 import modules.sdxl_styles
 
