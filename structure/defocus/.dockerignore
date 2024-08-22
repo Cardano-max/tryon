@@ -1,7 +1,0 @@
-# Ignore the following files and directories
-*.pyc
-__pycache__/
-*.log
-*.tmp
-.git/
-models/
