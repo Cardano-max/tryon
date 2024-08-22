@@ -291,12 +291,12 @@ default_sample_sharpness = get_config_item_or_set_default(
 default_sampler = get_config_item_or_set_default(
     key='default_sampler',
     default_value='dpmpp_2m_sde_gpu',
-    validator=lambda x: x in modules.flags.sampler_list
+    validator=lambda x: x in modules1.flags.sampler_list
 )
 default_scheduler = get_config_item_or_set_default(
     key='default_scheduler',
     default_value='karras',
-    validator=lambda x: x in modules.flags.scheduler_list
+    validator=lambda x: x in modules1.flags.scheduler_list
 )
 default_styles = get_config_item_or_set_default(
     key='default_styles',
@@ -305,7 +305,7 @@ default_styles = get_config_item_or_set_default(
         "Fooocus Enhance",
         "Fooocus Sharp"
     ],
-    validator=lambda x: isinstance(x, list) and all(y in modules.sdxl_styles.legal_style_names for y in x)
+    validator=lambda x: isinstance(x, list) and all(y in modules1.sdxl_styles.legal_style_names for y in x)
 )
 default_prompt_negative = get_config_item_or_set_default(
     key='default_prompt_negative',
@@ -322,7 +322,7 @@ default_prompt = get_config_item_or_set_default(
 default_performance = get_config_item_or_set_default(
     key='default_performance',
     default_value=Performance.QUALITY.value,
-    validator=lambda x: x in [y[1] for y in modules.flags.performance_selections if y[1] == x]
+    validator=lambda x: x in [y[1] for y in modules1.flags.performance_selections if y[1] == x]
 )
 default_advanced_checkbox = get_config_item_or_set_default(
     key='default_advanced_checkbox',
@@ -337,7 +337,7 @@ default_max_image_number = get_config_item_or_set_default(
 default_output_format = get_config_item_or_set_default(
     key='default_output_format',
     default_value='png',
-    validator=lambda x: x in modules.flags.output_formats
+    validator=lambda x: x in modules1.flags.output_formats
 )
 default_image_number = get_config_item_or_set_default(
     key='default_image_number',
@@ -378,7 +378,7 @@ default_aspect_ratio = get_config_item_or_set_default(
 default_inpaint_engine_version = get_config_item_or_set_default(
     key='default_inpaint_engine_version',
     default_value='v2.6',
-    validator=lambda x: x in modules.flags.inpaint_engine_versions
+    validator=lambda x: x in modules1.flags.inpaint_engine_versions
 )
 default_cfg_tsnr = get_config_item_or_set_default(
     key='default_cfg_tsnr',
@@ -415,7 +415,7 @@ default_save_metadata_to_images = get_config_item_or_set_default(
 default_metadata_scheme = get_config_item_or_set_default(
     key='default_metadata_scheme',
     default_value=MetadataScheme.FOOOCUS.value,
-    validator=lambda x: x in [y[1] for y in modules.flags.metadata_scheme if y[1] == x]
+    validator=lambda x: x in [y[1] for y in modules1.flags.metadata_scheme if y[1] == x]
 )
 metadata_created_by = get_config_item_or_set_default(
     key='metadata_created_by',
@@ -433,19 +433,19 @@ default_black_out_nsfw = get_config_item_or_set_default(
 default_inpaint_mask_model = get_config_item_or_set_default(
     key='default_inpaint_mask_model',
     default_value='sam',
-    validator=lambda x: x in modules.flags.inpaint_mask_models
+    validator=lambda x: x in modules1.flags.inpaint_mask_models
 )
 
 default_inpaint_mask_cloth_category = get_config_item_or_set_default(
     key='default_inpaint_mask_cloth_category',
     default_value='full',
-    validator=lambda x: x in modules.flags.inpaint_mask_cloth_category
+    validator=lambda x: x in modules1.flags.inpaint_mask_cloth_category
 )
 
 default_inpaint_mask_sam_model = get_config_item_or_set_default(
     key='default_inpaint_mask_sam_model',
     default_value='sam_vit_b_01ec64',
-    validator=lambda x: x in modules.flags.inpaint_mask_sam_model
+    validator=lambda x: x in modules1.flags.inpaint_mask_sam_model
 )
 
 config_dict["default_loras"] = default_loras = default_loras[:lora_count] + [['None', 1.0] for _ in range(lora_count - len(default_loras))]
@@ -525,7 +525,7 @@ def update_all_model_names():
 
 
 def downloading_inpaint_models(v):
-    assert v in modules.flags.inpaint_engine_versions
+    assert v in modules1.flags.inpaint_engine_versions
 
     load_file_from_url(
         url='https://huggingface.co/lllyasviel/fooocus_inpaint/resolve/main/fooocus_inpaint_head.pth',

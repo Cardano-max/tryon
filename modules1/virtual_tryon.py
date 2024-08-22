@@ -58,19 +58,18 @@ def virtual_tryon(clothes_image, person_image):
             False,  # translate_prompts
             ["Fooocus V2", "Fooocus Enhance", "Fooocus Sharp"],  # style_selections
             flags.Performance.QUALITY.value,  # performance_selection
-            modules.config.default_aspect_ratio,  # aspect_ratios_selection
+            modules1.config.default_aspect_ratio,  # aspect_ratios_selection
             1,  # image_number
-            modules.config.default_output_format,  # output_format
+            modules1.config.default_output_format,  # output_format
             seed,  # image_seed
-            modules.config.default_sample_sharpness,  # sharpness
-            modules.config.default_cfg_scale,  # guidance_scale
-            modules.config.default_base_model_name,  # base_model_name
-            modules.config.default_refiner_model_name,  # refiner_model_name
-            modules.config.default_refiner_switch,  # refiner_switch
+            modules1.config.default_sample_sharpness,  # sharpness
+            modules1.config.default_cfg_scale,  # guidance_scale
+            modules1.config.default_refiner_model_name,  # refiner_model_name
+            modules1.config.default_refiner_switch,  # refiner_switch
         ]
 
         # Add LoRA arguments
-        for lora in modules.config.default_loras:
+        for lora in modules1.config.default_loras:
             args.extend(lora)
 
         args.extend([
@@ -84,19 +83,19 @@ def virtual_tryon(clothes_image, person_image):
             person_mask,  # inpaint_mask_image_upload
             False,  # disable_preview
             False,  # disable_intermediate_results
-            modules.config.default_black_out_nsfw,  # black_out_nsfw
+            modules1.config.default_black_out_nsfw,  # black_out_nsfw
             1.0,  # adm_scaler_positive
             1.0,  # adm_scaler_negative
             0.0,  # adm_scaler_end
-            modules.config.default_cfg_tsnr,  # adaptive_cfg
-            modules.config.default_sampler,  # sampler_name
-            modules.config.default_scheduler,  # scheduler_name
-            modules.config.default_overwrite_step,  # overwrite_step
-            modules.config.default_overwrite_switch,  # overwrite_switch
+            modules1.config.default_cfg_tsnr,  # adaptive_cfg
+            modules1.config.default_sampler,  # sampler_name
+            modules1.config.default_scheduler,  # scheduler_name
+            modules1.config.default_overwrite_step,  # overwrite_step
+            modules1.config.default_overwrite_switch,  # overwrite_switch
             -1,  # overwrite_width
             -1,  # overwrite_height
             -1,  # overwrite_vary_strength
-            modules.config.default_overwrite_upscale,  # overwrite_upscale_strength
+            modules1.config.default_overwrite_upscale,  # overwrite_upscale_strength
             True,  # mixing_image_prompt_and_vary_upscale
             True,  # mixing_image_prompt_and_inpaint
             False,  # debugging_cn_preprocessor
@@ -112,7 +111,7 @@ def virtual_tryon(clothes_image, person_image):
             1.0,  # freeu_s2
             False,  # debugging_inpaint_preprocessor
             False,  # inpaint_disable_initial_latent
-            modules.config.default_inpaint_engine_version,  # inpaint_engine
+            modules1.config.default_inpaint_engine_version,  # inpaint_engine
             1.0,  # inpaint_strength
             0.618,  # inpaint_respective_field
             True,  # inpaint_mask_upload_checkbox
