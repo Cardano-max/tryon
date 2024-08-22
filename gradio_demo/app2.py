@@ -32,6 +32,15 @@ import mediapipe as mp
 import numpy as np
 import cv2
 
+# Try to import the Defocus virtual_try_on function
+try:
+    from structure.defocus.webui3 import virtual_try_on as defocus_virtual_try_on
+    DEFOCUS_AVAILABLE = True
+except ImportError:
+    print("WARNING: Could not import Defocus module. Proceeding without Defocus processing.")
+    DEFOCUS_AVAILABLE = False
+
+
 # Import the Defocus virtual_try_on function
 from structure.defocus.webui3 import virtual_try_on as defocus_virtual_try_on
 
@@ -364,6 +373,10 @@ def is_full_body_image(image):
 
 
 def process_with_defocus(image_path):
+    if not DEFOCUS_AVAILABLE:
+        print("Defocus module is not available. Skipping Defocus processing.")
+        return Image.open(image_path)
+    
     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
     category = "dresses"
     output_path = f"temp_defocus_output_{uuid.uuid4()}.jpg"
@@ -373,7 +386,8 @@ def process_with_defocus(image_path):
     if result:
         return Image.open(result)
     else:
-        return None
+        print("Defocus processing failed. Using original image.")
+        return Image.open(image_path)
 
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
@@ -392,6 +406,13 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         # Save the original image temporarily
         temp_original_path = f"temp_original_{uuid.uuid4()}.jpg"
         human_img_orig.save(temp_original_path)
+
+        # Process the image with Defocus if available
+        if DEFOCUS_AVAILABLE:
+            defocus_result = process_with_defocus(temp_original_path)
+            human_img_orig = defocus_result
+        else:
+            print("Skipping Defocus processing.")
 
         # Process the image with Defocus
         defocus_result = process_with_defocus(temp_original_path)
