@@ -26,7 +26,7 @@ from transformers import AutoTokenizer
 import numpy as np
 from gradio_demo.utils_mask import Masking
 from torchvision import transforms
-import gradio_demo.apply_net
+from gradio_demo import apply_net  # Import apply_net from gradio_demo
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 from gradio_demo.detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
