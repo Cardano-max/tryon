@@ -110,8 +110,8 @@ def get_resolution(key: str, fallback: str | None, source_dict: dict, results: l
     try:
         h = source_dict.get(key, source_dict.get(fallback, default))
         width, height = eval(h)
-        formatted = modules.config.add_ratio(f'{width}*{height}')
-        if formatted in modules.config.available_aspect_ratios:
+        formatted = modules1.config.add_ratio(f'{width}*{height}')
+        if formatted in modules1.config.available_aspect_ratios:
             results.append(formatted)
             results.append(-1)
             results.append(-1)
@@ -191,9 +191,9 @@ def parse_meta_from_preset(preset_content):
     preset_prepared = {}
     items = preset_content
 
-    for settings_key, meta_key in modules.config.possible_preset_keys.items():
+    for settings_key, meta_key in modules1.config.possible_preset_keys.items():
         if settings_key == "default_loras":
-            loras = getattr(modules.config, settings_key)
+            loras = getattr(modules1.config, settings_key)
             if settings_key in items:
                 loras = items[settings_key]
             for index, lora in enumerate(loras[:5]):
@@ -203,12 +203,12 @@ def parse_meta_from_preset(preset_content):
                 default_aspect_ratio = items[settings_key]
                 width, height = default_aspect_ratio.split('*')
             else:
-                default_aspect_ratio = getattr(modules.config, settings_key)
+                default_aspect_ratio = getattr(modules1.config, settings_key)
                 width, height = default_aspect_ratio.split('×')
                 height = height[:height.index(" ")]
             preset_prepared[meta_key] = (width, height)
         else:
-            preset_prepared[meta_key] = items[settings_key] if settings_key in items and items[settings_key] is not None else getattr(modules.config, settings_key)
+            preset_prepared[meta_key] = items[settings_key] if settings_key in items and items[settings_key] is not None else getattr(modules1.config, settings_key)
         
         if settings_key == "default_styles" or settings_key == "default_aspect_ratio":
             preset_prepared[meta_key] = str(preset_prepared[meta_key])
@@ -249,18 +249,18 @@ class MetadataParser(ABC):
         self.steps = steps
         self.base_model_name = Path(base_model_name).stem
 
-        base_model_path = os.path.join(modules.config.path_checkpoints, base_model_name)
+        base_model_path = os.path.join(modules1.config.path_checkpoints, base_model_name)
         self.base_model_hash = get_sha256(base_model_path)
 
         if refiner_model_name not in ['', 'None']:
             self.refiner_model_name = Path(refiner_model_name).stem
-            refiner_model_path = os.path.join(modules.config.path_checkpoints, refiner_model_name)
+            refiner_model_path = os.path.join(modules1.config.path_checkpoints, refiner_model_name)
             self.refiner_model_hash = get_sha256(refiner_model_path)
 
         self.loras = []
         for (lora_name, lora_weight) in loras:
             if lora_name != 'None':
-                lora_path = os.path.join(modules.config.path_loras, lora_name)
+                lora_path = os.path.join(modules1.config.path_loras, lora_name)
                 lora_hash = get_sha256(lora_path)
                 self.loras.append((Path(lora_name).stem, lora_weight, lora_hash))
 
@@ -342,8 +342,8 @@ class A1111MetadataParser(MetadataParser):
         if 'raw_prompt' in data:
             data['prompt'] = data['raw_prompt']
             raw_prompt = data['raw_prompt'].replace("\n", ', ')
-            if metadata_prompt != raw_prompt and modules.sdxl_styles.fooocus_expansion not in found_styles:
-                found_styles.append(modules.sdxl_styles.fooocus_expansion)
+            if metadata_prompt != raw_prompt and modules1.sdxl_styles.fooocus_expansion not in found_styles:
+                found_styles.append(modules1.sdxl_styles.fooocus_expansion)
 
         if 'raw_negative_prompt' in data:
             data['negative_prompt'] = data['raw_negative_prompt']
@@ -367,15 +367,15 @@ class A1111MetadataParser(MetadataParser):
 
         for key in ['base_model', 'refiner_model']:
             if key in data:
-                for filename in modules.config.model_filenames:
+                for filename in modules1.config.model_filenames:
                     path = Path(filename)
                     if data[key] == path.stem:
                         data[key] = filename
                         break
 
         if 'lora_hashes' in data:
-            lora_filenames = modules.config.lora_filenames.copy()
-            lora_filenames.remove(modules.config.downloading_sdxl_lcm_lora())
+            lora_filenames = modules1.config.lora_filenames.copy()
+            lora_filenames.remove(modules1.config.downloading_sdxl_lcm_lora())
             for li, lora in enumerate(data['lora_hashes'].split(', ')):
                 lora_name, lora_hash, lora_weight = lora.split(': ')
                 for filename in lora_filenames:
@@ -437,8 +437,8 @@ class A1111MetadataParser(MetadataParser):
             self.fooocus_to_a1111['version']: data['version']
         }
 
-        if modules.config.metadata_created_by != '':
-            generation_params[self.fooocus_to_a1111['created_by']] = modules.config.metadata_created_by
+        if modules1.config.metadata_created_by != '':
+            generation_params[self.fooocus_to_a1111['created_by']] = modules1.config.metadata_created_by
 
         generation_params_text = ", ".join(
             [k if k == v else f'{k}: {quote(v)}' for k, v in generation_params.items() if
@@ -454,9 +454,9 @@ class FooocusMetadataParser(MetadataParser):
         return MetadataScheme.FOOOCUS
 
     def parse_json(self, metadata: dict) -> dict:
-        model_filenames = modules.config.model_filenames.copy()
-        lora_filenames = modules.config.lora_filenames.copy()
-        lora_filenames.remove(modules.config.downloading_sdxl_lcm_lora())
+        model_filenames = modules1.config.model_filenames.copy()
+        lora_filenames = modules1.config.lora_filenames.copy()
+        lora_filenames.remove(modules1.config.downloading_sdxl_lcm_lora())
 
         for key, value in metadata.items():
             if value in ['', 'None']:
@@ -493,8 +493,8 @@ class FooocusMetadataParser(MetadataParser):
 
         res['loras'] = self.loras
 
-        if modules.config.metadata_created_by != '':
-            res['created_by'] = modules.config.metadata_created_by
+        if modules1.config.metadata_created_by != '':
+            res['created_by'] = modules1.config.metadata_created_by
 
         return json.dumps(dict(sorted(res.items())))
 

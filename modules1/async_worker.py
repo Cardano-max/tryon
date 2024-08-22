@@ -31,30 +31,30 @@ def worker():
     import random
     import copy
     import cv2
-    import modules.default_pipeline as pipeline
-    import modules.core as core
-    import modules.flags as flags
-    import modules.config
-    import modules.patch
+    import modules1.default_pipeline as pipeline
+    import modules1.core as core
+    import modules1.flags as flags
+    import modules1.config
+    import modules1.patch
     import ldm_patched.modules.model_management
     import extras.preprocessors as preprocessors
-    import modules.inpaint_worker as inpaint_worker
-    import modules.constants as constants
+    import modules1.inpaint_worker as inpaint_worker
+    import modules1.constants as constants
     import extras.ip_adapter as ip_adapter
     import extras.face_crop
     import fooocus_version
     import args_manager
 
-    from modules.censor import censor_batch
+    from modules1.censor import censor_batch
 
-    from modules.sdxl_styles import apply_style, apply_wildcards, fooocus_expansion
-    from modules.private_logger import log
+    from modules1.sdxl_styles import apply_style, apply_wildcards, fooocus_expansion
+    from modules1.private_logger import log
     from extras.expansion import safe_str
-    from modules.util import remove_empty_str, HWC3, resize_image, \
+    from modules1.util import remove_empty_str, HWC3, resize_image, \
         get_image_shape_ceil, set_image_shape_ceil, get_shape_ceil, resample_image, erode_or_dilate
-    from modules.upscaler import perform_upscale
-    from modules.flags import Performance, lora_count
-    from modules.meta_parser import get_metadata_parser, MetadataScheme
+    from modules1.upscaler import perform_upscale
+    from modules1.flags import Performance, lora_count
+    from modules1.meta_parser import get_metadata_parser, MetadataScheme
 
     pid = os.getpid()
     print(f'Started worker with PID {pid}')
@@ -76,7 +76,7 @@ def worker():
         if not isinstance(imgs, list):
             imgs = [imgs]
 
-        if modules.config.default_black_out_nsfw or black_out_nsfw:
+        if modules1.config.default_black_out_nsfw or black_out_nsfw:
             progressbar(async_task, progressbar_index, 'Checking for NSFW content ...')
             imgs_censor = [cv2.imread(img) for img in imgs]
             imgs_censor = censor_batch(imgs_censor)
@@ -249,7 +249,7 @@ def worker():
         if performance_selection == Performance.EXTREME_SPEED:
             print('Enter LCM mode.')
             progressbar(async_task, 1, 'Downloading LCM components ...')
-            loras += [(modules.config.downloading_sdxl_lcm_lora(), 1.0)]
+            loras += [(modules1.config.downloading_sdxl_lcm_lora(), 1.0)]
 
             if refiner_model_name != 'None':
                 print(f'Refiner disabled in LCM mode.')
@@ -266,7 +266,7 @@ def worker():
             adm_scaler_end = 0.0
 
         if translate_prompts:
-            from modules.translator import translate2en
+            from modules1.translator import translate2en
             prompt = translate2en(prompt, 'prompt')
             negative_prompt = translate2en(negative_prompt, 'negative prompt')
 
@@ -332,7 +332,7 @@ def worker():
                         steps = performance_selection.steps_uov()
 
                     progressbar(async_task, 1, 'Downloading upscale models ...')
-                    modules.config.downloading_upscale_model()
+                    modules1.config.downloading_upscale_model()
             if (current_tab == 'inpaint' or (
                     current_tab == 'ip' and mixing_image_prompt_and_inpaint)) \
                     and isinstance(inpaint_input_image, dict):
@@ -358,10 +358,10 @@ def worker():
                 if isinstance(inpaint_image, np.ndarray) and isinstance(inpaint_mask, np.ndarray) \
                         and (np.any(inpaint_mask > 127) or len(outpaint_selections) > 0):
                     progressbar(async_task, 1, 'Downloading upscale models ...')
-                    modules.config.downloading_upscale_model()
+                    modules1.config.downloading_upscale_model()
                     if inpaint_parameterized:
                         progressbar(async_task, 1, 'Downloading inpainter ...')
-                        inpaint_head_model_path, inpaint_patch_model_path = modules.config.downloading_inpaint_models(
+                        inpaint_head_model_path, inpaint_patch_model_path = modules1.config.downloading_inpaint_models(
                             inpaint_engine)
                         base_model_additional_loras += [(inpaint_patch_model_path, 1.0)]
                         print(f'[Inpaint] Current inpaint model is {inpaint_patch_model_path}')
@@ -383,13 +383,13 @@ def worker():
                 goals.append('cn')
                 progressbar(async_task, 1, 'Downloading control models ...')
                 if len(cn_tasks[flags.cn_canny]) > 0:
-                    controlnet_canny_path = modules.config.downloading_controlnet_canny()
+                    controlnet_canny_path = modules1.config.downloading_controlnet_canny()
                 if len(cn_tasks[flags.cn_cpds]) > 0:
-                    controlnet_cpds_path = modules.config.downloading_controlnet_cpds()
+                    controlnet_cpds_path = modules1.config.downloading_controlnet_cpds()
                 if len(cn_tasks[flags.cn_ip]) > 0:
-                    clip_vision_path, ip_negative_path, ip_adapter_path = modules.config.downloading_ip_adapters('ip')
+                    clip_vision_path, ip_negative_path, ip_adapter_path = modules1.config.downloading_ip_adapters('ip')
                 if len(cn_tasks[flags.cn_ip_face]) > 0:
-                    clip_vision_path, ip_negative_path, ip_adapter_face_path = modules.config.downloading_ip_adapters(
+                    clip_vision_path, ip_negative_path, ip_adapter_face_path = modules1.config.downloading_ip_adapters(
                         'face')
                 progressbar(async_task, 1, 'Loading control models ...')
 
@@ -851,11 +851,11 @@ def worker():
                          ('Steps', 'steps', steps),
                          ('Resolution', 'resolution', str((width, height))),
                          ('Guidance Scale', 'guidance_scale', guidance_scale),
-                         ('Sharpness', 'sharpness', modules.patch.patch_settings[pid].sharpness),
+                         ('Sharpness', 'sharpness', modules1.patch.patch_settings[pid].sharpness),
                          ('ADM Guidance', 'adm_guidance', str((
-                             modules.patch.patch_settings[pid].positive_adm_scale,
-                             modules.patch.patch_settings[pid].negative_adm_scale,
-                             modules.patch.patch_settings[pid].adm_scaler_end))),
+                             modules1.patch.patch_settings[pid].positive_adm_scale,
+                             modules1.patch.patch_settings[pid].negative_adm_scale,
+                             modules1.patch.patch_settings[pid].adm_scaler_end))),
                          ('Base Model', 'base_model', base_model_name),
                          ('Refiner Model', 'refiner_model', refiner_model_name),
                          ('Refiner Switch', 'refiner_switch', refiner_switch)]
@@ -865,8 +865,8 @@ def worker():
                             d.append(('Overwrite Switch', 'overwrite_switch', overwrite_switch))
                         if refiner_swap_method != flags.refiner_swap_method:
                             d.append(('Refiner Swap Method', 'refiner_swap_method', refiner_swap_method))
-                    if modules.patch.patch_settings[pid].adaptive_cfg != modules.config.default_cfg_tsnr:
-                        d.append(('CFG Mimicking from TSNR', 'adaptive_cfg', modules.patch.patch_settings[pid].adaptive_cfg))
+                    if modules1.patch.patch_settings[pid].adaptive_cfg != modules1.config.default_cfg_tsnr:
+                        d.append(('CFG Mimicking from TSNR', 'adaptive_cfg', modules1.patch.patch_settings[pid].adaptive_cfg))
 
                     d.append(('Sampler', 'sampler', sampler_name))
                     d.append(('Scheduler', 'scheduler', scheduler_name))
@@ -893,7 +893,7 @@ def worker():
                 yield_result(async_task, img_paths, black_out_nsfw, do_not_show_finished_images=len(tasks) == 1
                              or disable_intermediate_results or sampler_name == 'lcm',
                              progressbar_index=int(15.0 + 85.0 * float((current_task_id + 1) * steps) / float(all_steps)))
-            except ldm_patched.modules.model_management.InterruptProcessingException as e:
+            except ldm_patched.modules1.model_management.InterruptProcessingException as e:
                 if async_task.last_stop == 'skip':
                     print('User skipped')
                     async_task.last_stop = False
@@ -923,8 +923,8 @@ def worker():
                 traceback.print_exc()
                 task.yields.append(['finish', task.results])
             finally:
-                if pid in modules.patch.patch_settings:
-                    del modules.patch.patch_settings[pid]
+                if pid in modules1.patch.patch_settings:
+                    del modules1.patch.patch_settings[pid]
     pass
 
 

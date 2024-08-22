@@ -1,6 +1,6 @@
 import json
 import hashlib
-import modules.constants as constants
+import modules1.constants as constants
 
 from os.path import exists
 

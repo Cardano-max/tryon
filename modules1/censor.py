@@ -23,8 +23,8 @@ def check_safety(x_image):
     global safety_feature_extractor, safety_checker
 
     if safety_feature_extractor is None:
-        safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id, cache_dir=modules.config.path_safety_checker_models)
-        safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id, cache_dir=modules.config.path_safety_checker_models)
+        safety_feature_extractor = AutoFeatureExtractor.from_pretrained(safety_model_id, cache_dir=modules1.config.path_safety_checker_models)
+        safety_checker = StableDiffusionSafetyChecker.from_pretrained(safety_model_id, cache_dir=modules1.config.path_safety_checker_models)
     
     safety_checker_input = safety_feature_extractor(numpy_to_pil(x_image), return_tensors="pt")
     x_checked_image, has_nsfw_concept = safety_checker(images=x_image, clip_input=safety_checker_input.pixel_values)

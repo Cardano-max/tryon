@@ -60,7 +60,7 @@ def assert_model_integrity():
 def refresh_base_model(name):
     global model_base
 
-    filename = os.path.abspath(os.path.realpath(os.path.join(modules.config.path_checkpoints, name)))
+    filename = os.path.abspath(os.path.realpath(os.path.join(modules1.config.path_checkpoints, name)))
 
     if model_base.filename == filename:
         return
@@ -76,7 +76,7 @@ def refresh_base_model(name):
 def refresh_refiner_model(name):
     global model_refiner
 
-    filename = os.path.abspath(os.path.realpath(os.path.join(modules.config.path_checkpoints, name)))
+    filename = os.path.abspath(os.path.realpath(os.path.join(modules1.config.path_checkpoints, name)))
 
     if model_refiner.filename == filename:
         return
@@ -251,9 +251,9 @@ def refresh_everything(refiner_model_name, base_model_name, loras,
 
 
 refresh_everything(
-    refiner_model_name=modules.config.default_refiner_model_name,
-    base_model_name=modules.config.default_base_model_name,
-    loras=modules.config.default_loras
+    refiner_model_name=modules1.config.default_refiner_model_name,
+    base_model_name=modules1.config.default_base_model_name,
+    loras=modules1.config.default_loras
 )
 
 
@@ -351,7 +351,7 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
     sigma_max = float(sigma_max.cpu().numpy())
     print(f'[Sampler] sigma_min = {sigma_min}, sigma_max = {sigma_max}')
 
-    modules.patch.BrownianTreeNoiseSamplerPatched.global_init(
+    modules1.patch.BrownianTreeNoiseSamplerPatched.global_init(
         initial_latent['samples'].to(ldm_patched.modules.model_management.get_torch_device()),
         sigma_min, sigma_max, seed=image_seed, cpu=False)
 
@@ -425,10 +425,10 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
         decoded_latent = core.decode_vae(vae=target_model, latent_image=sampled_latent, tiled=tiled)
 
     if refiner_swap_method == 'vae':
-        modules.patch.patch_settings[os.getpid()].eps_record = 'vae'
+        modules1.patch.patch_settings[os.getpid()].eps_record = 'vae'
 
-        if modules.inpaint_worker.current_task is not None:
-            modules.inpaint_worker.current_task.unswap()
+        if modules1.inpaint_worker.current_task is not None:
+            modules1.inpaint_worker.current_task.unswap()
 
         sampled_latent = core.ksampler(
             model=target_unet,
@@ -463,10 +463,10 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
                                   denoise=denoise)[switch:] * k_sigmas
         len_sigmas = len(sigmas) - 1
 
-        noise_mean = torch.mean(modules.patch.patch_settings[os.getpid()].eps_record, dim=1, keepdim=True)
+        noise_mean = torch.mean(modules1.patch.patch_settings[os.getpid()].eps_record, dim=1, keepdim=True)
 
-        if modules.inpaint_worker.current_task is not None:
-            modules.inpaint_worker.current_task.swap()
+        if modules1.inpaint_worker.current_task is not None:
+            modules1.inpaint_worker.current_task.swap()
 
         sampled_latent = core.ksampler(
             model=target_model,
@@ -493,5 +493,5 @@ def process_diffusion(positive_cond, negative_cond, steps, switch, width, height
         decoded_latent = core.decode_vae(vae=target_model, latent_image=sampled_latent, tiled=tiled)
 
     images = core.pytorch_to_numpy(decoded_latent)
-    modules.patch.patch_settings[os.getpid()].eps_record = None
+    modules1.patch.patch_settings[os.getpid()].eps_record = None
     return images

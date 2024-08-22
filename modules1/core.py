@@ -79,7 +79,7 @@ class StableDiffusionModel:
             if os.path.exists(name):
                 lora_filename = name
             else:
-                lora_filename = os.path.join(modules.config.path_loras, name)
+                lora_filename = os.path.join(modules1.config.path_loras, name)
 
             if not os.path.exists(lora_filename):
                 print(f'Lora file not found: {lora_filename}')
@@ -221,7 +221,7 @@ VAE_approx_models = {}
 def get_previewer(model):
     global VAE_approx_models
 
-    from modules.config import path_vae_approx
+    from modules1.config import path_vae_approx
     is_sdxl = isinstance(model.model.latent_format, ldm_patched.modules.latent_formats.SDXL)
     vae_approx_filename = os.path.join(path_vae_approx, 'xlvaeapp.pth' if is_sdxl else 'vaeapp_sd15.pth')
 
@@ -299,9 +299,9 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
             callback_function(previewer_start + step, x0, x, previewer_end, y)
 
     disable_pbar = False
-    modules.sample_hijack.current_refiner = refiner
-    modules.sample_hijack.refiner_switch_step = refiner_switch
-    ldm_patched.modules.samplers.sample = modules.sample_hijack.sample_hacked
+    modules1.sample_hijack.current_refiner = refiner
+    modules1.sample_hijack.refiner_switch_step = refiner_switch
+    ldm_patched.modules.samplers.sample = modules1.sample_hijack.sample_hacked
 
     try:
         samples = ldm_patched.modules.sample.sample(model,
@@ -317,7 +317,7 @@ def ksampler(model, positive, negative, latent, seed=None, steps=30, cfg=7.0, sa
         out = latent.copy()
         out["samples"] = samples
     finally:
-        modules.sample_hijack.current_refiner = None
+        modules1.sample_hijack.current_refiner = None
 
     return out
 
