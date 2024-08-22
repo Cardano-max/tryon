@@ -101,13 +101,15 @@ _PREDEFINED_SPLITS_COCO_PANOPTIC = {
 def register_all_coco(root):
     for dataset_name, splits_per_dataset in _PREDEFINED_SPLITS_COCO.items():
         for key, (image_root, json_file) in splits_per_dataset.items():
-            # Assume pre-defined datasets live in `./datasets`.
-            register_coco_instances(
-                key,
-                _get_builtin_metadata(dataset_name),
-                os.path.join(root, json_file) if "://" not in json_file else json_file,
-                os.path.join(root, image_root),
-            )
+            # Check if the dataset is already registered
+            if key not in DatasetCatalog:
+                # Assume pre-defined datasets live in `./datasets`.
+                register_coco_instances(
+                    key,
+                    _get_builtin_metadata(dataset_name),
+                    os.path.join(root, json_file) if "://" not in json_file else json_file,
+                    os.path.join(root, image_root),
+                )
 
     for (
         prefix,
@@ -118,25 +120,27 @@ def register_all_coco(root):
         image_root, instances_json = instances_meta.image_root, instances_meta.json_file
         # The "separated" version of COCO panoptic segmentation dataset,
         # e.g. used by Panoptic FPN
-        register_coco_panoptic_separated(
-            prefix,
-            _get_builtin_metadata("coco_panoptic_separated"),
-            image_root,
-            os.path.join(root, panoptic_root),
-            os.path.join(root, panoptic_json),
-            os.path.join(root, semantic_root),
-            instances_json,
-        )
+        if prefix not in DatasetCatalog:
+            register_coco_panoptic_separated(
+                prefix,
+                _get_builtin_metadata("coco_panoptic_separated"),
+                image_root,
+                os.path.join(root, panoptic_root),
+                os.path.join(root, panoptic_json),
+                os.path.join(root, semantic_root),
+                instances_json,
+            )
         # The "standard" version of COCO panoptic segmentation dataset,
         # e.g. used by Panoptic-DeepLab
-        register_coco_panoptic(
-            prefix,
-            _get_builtin_metadata("coco_panoptic_standard"),
-            image_root,
-            os.path.join(root, panoptic_root),
-            os.path.join(root, panoptic_json),
-            instances_json,
-        )
+        if prefix not in DatasetCatalog:
+            register_coco_panoptic(
+                prefix,
+                _get_builtin_metadata("coco_panoptic_standard"),
+                image_root,
+                os.path.join(root, panoptic_root),
+                os.path.join(root, panoptic_json),
+                instances_json,
+            )
 
 
 # ==== Predefined datasets and splits for LVIS ==========
