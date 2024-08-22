@@ -3,12 +3,12 @@ import json
 import math
 import numbers
 import args_manager
-import modules.flags
-import modules.sdxl_styles
+import modules1.flags
+import modules1.sdxl_styles
 
-from modules.model_loader import load_file_from_url
-from modules.util import get_files_from_folder
-from modules.flags import Performance, MetadataScheme, lora_count
+from modules1.model_loader import load_file_from_url
+from modules1.util import get_files_from_folder
+from modules1.flags import Performance, MetadataScheme, lora_count
 
 def get_config_path(key, default_value):
     env = os.getenv(key)

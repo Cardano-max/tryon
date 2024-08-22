@@ -2,7 +2,7 @@ import os
 import re
 import json
 
-from modules.util import get_files_from_folder
+from modules1.util import get_files_from_folder
 
 
 # cannot use modules.config - validators causing circular imports

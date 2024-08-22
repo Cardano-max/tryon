@@ -5,11 +5,11 @@ import math
 import ldm_patched.modules.model_base
 import ldm_patched.ldm.modules.diffusionmodules.openaimodel
 import ldm_patched.modules.model_management
-import modules.anisotropic as anisotropic
+import modules1.anisotropic as anisotropic
 import ldm_patched.ldm.modules.attention
 import ldm_patched.k_diffusion.sampling
 import ldm_patched.modules.sd1_clip
-import modules.inpaint_worker as inpaint_worker
+import modules1.inpaint_worker as inpaint_worker
 import ldm_patched.ldm.modules.diffusionmodules.openaimodel
 import ldm_patched.ldm.modules.diffusionmodules.model
 import ldm_patched.modules.sd
@@ -19,13 +19,13 @@ import ldm_patched.modules.samplers
 import ldm_patched.modules.args_parser
 import warnings
 import safetensors.torch
-import modules.constants as constants
+import modules1.constants as constants
 
 from ldm_patched.modules.samplers import calc_cond_uncond_batch
 from ldm_patched.k_diffusion.sampling import BatchedBrownianTree
 from ldm_patched.ldm.modules.diffusionmodules.openaimodel import forward_timestep_embed, apply_control
-from modules.patch_precision import patch_all_precision
-from modules.patch_clip import patch_all_clip
+from modules1.patch_precision import patch_all_precision
+from modules1.patch_clip import patch_all_clip
 
 
 class PatchSettings:

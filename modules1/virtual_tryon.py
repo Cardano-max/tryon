@@ -1,11 +1,11 @@
 import numpy as np
 from PIL import Image
 from extras.inpaint_mask import generate_mask_from_image
-import modules.flags as flags
-from modules.async_worker import AsyncTask
+import modules1.flags as flags
+from modules1.async_worker import AsyncTask
 import time
-import modules.config
-import modules.constants as constants
+import modules1.config
+import modules1.constants as constants
 import random
 import args_manager
 import traceback

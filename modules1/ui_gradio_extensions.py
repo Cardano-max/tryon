@@ -4,7 +4,7 @@ import os
 import gradio as gr
 import args_manager
 
-from modules.localization import localization_js
+from modules1.localization import localization_js
 
 
 GradioTemplateResponseOriginal = gr.routes.templates.TemplateResponse

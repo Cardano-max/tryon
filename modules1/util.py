@@ -11,7 +11,7 @@ import json
 from PIL import Image
 from hashlib import sha256
 
-import modules.sdxl_styles
+import modules1.sdxl_styles
 
 LANCZOS = (Image.Resampling.LANCZOS if hasattr(Image, 'Resampling') else Image.LANCZOS)
 HASH_SHA256_LENGTH = 10

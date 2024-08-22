@@ -1,16 +1,16 @@
-import modules.core as core
+import modules1.core as core
 import os
 import torch
-import modules.patch
-import modules.config
+import modules1.patch
+import modules1.config
 import ldm_patched.modules.model_management
 import ldm_patched.modules.latent_formats
-import modules.inpaint_worker
+import modules1.inpaint_worker
 import extras.vae_interpose as vae_interpose
 from extras.expansion import FooocusExpansion
 
 from ldm_patched.modules.model_base import SDXL, SDXLRefiner
-from modules.sample_hijack import clip_separate
+from modules1.sample_hijack import clip_separate
 
 
 model_base = core.StableDiffusionModel()

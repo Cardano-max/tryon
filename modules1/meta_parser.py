@@ -8,11 +8,11 @@ import gradio as gr
 from PIL import Image
 
 import fooocus_version
-import modules.config
-import modules.sdxl_styles
-from modules.flags import MetadataScheme, Performance, Steps
-from modules.flags import lora_count, SAMPLERS, CIVITAI_NO_KARRAS
-from modules.util import quote, unquote, extract_styles_from_prompt, is_json, calculate_sha256
+import modules1.config
+import modules1.sdxl_styles
+from modules1.flags import MetadataScheme, Performance, Steps
+from modules1.flags import lora_count, SAMPLERS, CIVITAI_NO_KARRAS
+from modules1.util import quote, unquote, extract_styles_from_prompt, is_json, calculate_sha256
 
 re_param_code = r'\s*(\w[\w \-/]+):\s*("(?:\\.|[^\\"])+"|[^,]*)(?:,|$)'
 re_param = re.compile(re_param_code)

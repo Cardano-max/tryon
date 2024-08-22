@@ -1,6 +1,6 @@
 import os
 import gradio as gr
-import modules.localization as localization
+import modules1.localization as localization
 import json
 
 
