@@ -1,5 +1,4 @@
 import sys
-sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
 import os
 import time
 import traceback
@@ -9,13 +8,15 @@ from PIL import Image
 import cv2
 from queue import Queue
 from threading import Lock, Event
-import modules.config
+from modules.config
 import modules.async_worker as worker
 import modules.constants as constants
 import modules.flags as flags
 from modules.util import HWC3, resize_image
 from gradio_demo.utils_mask import Masking
 import os
+print(sys.path)
+
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
