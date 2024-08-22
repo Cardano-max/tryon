@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/tryon/structure/defocus')
 import gradio as gr
 import sys
 import cv2
@@ -35,7 +33,7 @@ import numpy as np
 import cv2
 import sys
 # Import the Defocus virtual_try_on function
-from structure.defocus.webui3 import virtual_try_on as defocus_virtual_try_on
+from webui3 import virtual_try_on as defocus_virtual_try_on
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 masker = Masking()
