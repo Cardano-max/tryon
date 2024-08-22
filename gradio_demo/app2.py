@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/tryon/structure/defocus')
 import gradio as gr
 import sys
 import cv2
