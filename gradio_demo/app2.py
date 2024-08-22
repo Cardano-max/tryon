@@ -40,9 +40,6 @@ import sys
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
 
-# Import necessary functions from modules1.util
-from modules1.util import HWC3, resize_image
-
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 masker = Masking()
 
@@ -385,18 +382,6 @@ def process_with_defocus(image_path):
     else:
         return None
 
-def process_with_defocus(image_path):
-    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
-    category = "dresses"
-    output_path = f"temp_defocus_output_{uuid.uuid4()}.jpg"
-    
-    result = defocus_virtual_try_on(image_path, prompt, category, output_path)
-    
-    if result:
-        return Image.open(result)
-    else:
-        return None
-
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
         openpose_model.preprocessor.body_estimation.model.to(device)
@@ -424,6 +409,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         # Use the Defocus result as the new human_img_orig
         human_img_orig = defocus_result
 
+        # Continue with the rest of the try-on process
         unique_id = str(uuid.uuid4())
         save_dir = "eval_images"
         os.makedirs(save_dir, exist_ok=True)
@@ -455,10 +441,6 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             mask = mask.resize((768,1024))
         else:
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
-
-        # Convert mask to numpy array if it's not already
-        if isinstance(mask, Image.Image):
-            mask = np.array(mask)
 
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
