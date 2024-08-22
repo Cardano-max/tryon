@@ -25,7 +25,7 @@ from torchvision import transforms
 import gradio_demo.apply_net
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
-from detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
+from gradio_demo.detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
 from PIL import Image as PILImage
 import mediapipe as mp
