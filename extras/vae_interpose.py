@@ -7,7 +7,7 @@ import torch.nn as nn
 import ldm_patched.modules.model_management
 
 from ldm_patched.modules.model_patcher import ModelPatcher
-from modules.config import path_vae_approx
+from modules1.config import path_vae_approx
 
 
 class Block(nn.Module):
@@ -76,7 +76,7 @@ def parse(x):
         model.eval()
         sd = sf.load_file(vae_approx_filename)
         model.load_state_dict(sd)
-        fp16 = ldm_patched.modules.model_management.should_use_fp16()
+        fp16 = ldm_patched.modules1.model_management.should_use_fp16()
         if fp16:
             model = model.half()
         vae_approx_model = ModelPatcher(

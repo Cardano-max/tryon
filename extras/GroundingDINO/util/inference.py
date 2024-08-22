@@ -2,8 +2,8 @@ from typing import Tuple, List
 
 import ldm_patched.modules.model_management as model_management
 from ldm_patched.modules.model_patcher import ModelPatcher
-from modules.config import path_inpaint
-from modules.model_loader import load_file_from_url
+from modules1.config import path_inpaint
+from modules1.model_loader import load_file_from_url
 
 import numpy as np
 import supervision as sv

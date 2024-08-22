@@ -6,8 +6,8 @@ import ldm_patched.ldm.modules.attention as attention
 
 from extras.resampler import Resampler
 from ldm_patched.modules.model_patcher import ModelPatcher
-from modules.core import numpy_to_pytorch
-from modules.ops import use_patched_ops
+from modules1.core import numpy_to_pytorch
+from modules1.ops import use_patched_ops
 from ldm_patched.modules.ops import manual_cast
 
 
