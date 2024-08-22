@@ -12,10 +12,10 @@ import cv2
 from queue import Queue
 from threading import Lock, Event
 import modules1.config
-import modules.async_worker as worker
-import modules.constants as constants
-import modules.flags as flags
-from modules.util import HWC3, resize_image
+import modules1.async_worker as worker
+import modules1.constants as constants
+import modules1.flags as flags
+from modules1.util import HWC3, resize_image
 from gradio_demo.utils_mask import Masking
 import os
 print(sys.path)
@@ -70,23 +70,23 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         args = [
             True,  # Input image checkbox
             prompt,  # Prompt for generating garment
-            modules.config.default_prompt_negative,  # Negative prompt
+            modules1.config.default_prompt_negative,  # Negative prompt
             False,  # Advanced checkbox
-            modules.config.default_styles,  # Style selections
+            modules1.config.default_styles,  # Style selections
             flags.Performance.QUALITY.value,  # Performance selection
             aspect_ratio,  # Aspect ratio selection
             1,  # Image number
-            modules.config.default_output_format,  # Output format
+            modules1.config.default_output_format,  # Output format
             np.random.randint(constants.MIN_SEED, constants.MAX_SEED),  # Random seed
-            modules.config.default_sample_sharpness,  # Sharpness
-            modules.config.default_cfg_scale,  # Guidance scale
-            modules.config.default_base_model_name,  # Base model
-            modules.config.default_refiner_model_name,  # Refiner model
-            modules.config.default_refiner_switch,  # Refiner switch
+            modules1.config.default_sample_sharpness,  # Sharpness
+            modules1.config.default_cfg_scale,  # Guidance scale
+            modules1.config.default_base_model_name,  # Base model
+            modules1.config.default_refiner_model_name,  # Refiner model
+            modules1.config.default_refiner_switch,  # Refiner switch
         ]
         
         # Add LoRA arguments
-        for lora in modules.config.default_loras:
+        for lora in modules1.config.default_loras:
             args.extend(lora)
 
         args.extend([
@@ -100,19 +100,19 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
             inpaint_mask,  # Inpaint mask image
             True,  # Disable preview
             True,  # Disable intermediate results
-            modules.config.default_black_out_nsfw,  # Black out NSFW
+            modules1.config.default_black_out_nsfw,  # Black out NSFW
             1.5,  # Positive ADM guidance
             0.8,  # Negative ADM guidance
             0.3,  # ADM guidance end
-            modules.config.default_cfg_tsnr,  # CFG mimicking from TSNR
-            modules.config.default_sampler,  # Sampler name
-            modules.config.default_scheduler,  # Scheduler name
+            modules1.config.default_cfg_tsnr,  # CFG mimicking from TSNR
+            modules1.config.default_sampler,  # Sampler name
+            modules1.config.default_scheduler,  # Scheduler name
             -1,  # Overwrite step
             -1,  # Overwrite switch
             target_width,  # Overwrite width
             target_height,  # Overwrite height
             -1,  # Overwrite vary strength
-            modules.config.default_overwrite_upscale,  # Overwrite upscale strength
+            modules1.config.default_overwrite_upscale,  # Overwrite upscale strength
             False,  # Mixing image prompt and vary upscale
             True,  # Mixing image prompt and inpaint
             False,  # Debugging CN preprocessor
@@ -128,14 +128,14 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
             1.0,  # FreeU s2
             False,  # Debugging inpaint preprocessor
             False,  # Inpaint disable initial latent
-            modules.config.default_inpaint_engine_version,  # Inpaint engine
+            modules1.config.default_inpaint_engine_version,  # Inpaint engine
             1.0,  # Inpaint strength
             0.618,  # Inpaint respective field
             False,  # Inpaint mask upload checkbox
             False,  # Invert mask checkbox
             0,  # Inpaint erode or dilate
-            modules.config.default_save_metadata_to_images,  # Save metadata to images
-            modules.config.default_metadata_scheme,  # Metadata scheme
+            modules1.config.default_save_metadata_to_images,  # Save metadata to images
+            modules1.config.default_metadata_scheme,  # Metadata scheme
         ])
 
         # Create and append the image generation task
