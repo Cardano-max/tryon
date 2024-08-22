@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# Copyright (c) Facebook, Inc. and its affiliates.
-
 import argparse
 import glob
 import logging
@@ -9,12 +6,14 @@ import sys
 from typing import Any, ClassVar, Dict, List
 import torch
 
+# Update these imports to use the local version of detectron2
 from gradio_demo.detectron2.config import CfgNode, get_cfg
 from gradio_demo.detectron2.data.detection_utils import read_image
 from gradio_demo.detectron2.engine.defaults import DefaultPredictor
 from gradio_demo.detectron2.structures.instances import Instances
 from gradio_demo.detectron2.utils.logger import setup_logger
 
+# Update these imports if necessary
 from densepose import add_densepose_config
 from densepose.structures import DensePoseChartPredictorOutput, DensePoseEmbeddingPredictorOutput
 from densepose.utils.logger import verbosity_to_level
