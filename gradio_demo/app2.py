@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
 import gradio as gr
 import sys
 import cv2

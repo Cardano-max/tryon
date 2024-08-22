@@ -1,4 +1,7 @@
 import sys
+sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
+
+import sys
 import os
 import time
 import traceback
@@ -8,7 +11,7 @@ from PIL import Image
 import cv2
 from queue import Queue
 from threading import Lock, Event
-from modules.config
+from modules import config
 import modules.async_worker as worker
 import modules.constants as constants
 import modules.flags as flags
