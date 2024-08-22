@@ -20,7 +20,7 @@ import torch
 import os
 from transformers import AutoTokenizer
 import numpy as np
-from utils_mask import Masking
+from gradio_demo.utils_mask import Masking
 from torchvision import transforms
 import apply_net
 from preprocess.humanparsing.run_parsing import Parsing
