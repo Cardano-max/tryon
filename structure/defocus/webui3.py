@@ -7,7 +7,7 @@ from PIL import Image
 import cv2
 from queue import Queue
 from threading import Lock, Event
-import modules.config
+from structure.defocus.modules import config
 import modules.async_worker as worker
 import modules.constants as constants
 import modules.flags as flags
