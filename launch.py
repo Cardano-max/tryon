@@ -20,8 +20,8 @@ import platform
 import fooocus_version
 
 from build_launcher import build_launcher
-from modules.launch_util import is_installed, run, python, run_pip, requirements_met
-from modules.model_loader import load_file_from_url
+from modules1.launch_util import is_installed, run, python, run_pip, requirements_met
+from modules1.model_loader import load_file_from_url
 
 REINSTALL_ALL = False
 TRY_INSTALL_XFORMERS = False
@@ -81,7 +81,7 @@ if args.gpu_device_id is not None:
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_device_id)
     print("Set device to:", args.gpu_device_id)
 
-from modules import config
+from modules1 import config
 os.environ["U2NET_HOME"] = config.path_inpaint
 
 
