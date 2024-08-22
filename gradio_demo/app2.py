@@ -40,6 +40,8 @@ import sys
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
 
+# Import the correct config
+from gradio_demo.detectron2.config import get_cfg
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 masker = Masking()
