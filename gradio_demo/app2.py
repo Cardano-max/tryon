@@ -3,12 +3,12 @@ import os
 sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
 
 import gradio as gr
-import sys
 import cv2
 import uuid
 import math
-sys.path.append('./')
 from PIL import Image
+import numpy as np
+import torch
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
 from src.unet_hacked_garmnet import UNet2DConditionModel as UNet2DConditionModel_ref
 from src.unet_hacked_tryon import UNet2DConditionModel
@@ -20,32 +20,24 @@ from transformers import (
 )
 from diffusers import DDPMScheduler, AutoencoderKL
 from typing import List
-import torch
-import os
 from transformers import AutoTokenizer
-import numpy as np
 from gradio_demo.utils_mask import Masking
 from torchvision import transforms
-from gradio_demo import apply_net  # Import apply_net from gradio_demo
+from gradio_demo import apply_net
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 from gradio_demo.detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
-from PIL import Image as PILImage
 import mediapipe as mp
-import numpy as np
-import cv2
-import sys
 
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
 
-# Import the correct config
-from gradio_demo.detectron2.config import get_cfg
+# Import necessary functions from modules1.util
+from modules1.util import HWC3, resize_image
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 masker = Masking()
-
 
 
 catalog = []
@@ -412,7 +404,6 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         # Use the Defocus result as the new human_img_orig
         human_img_orig = defocus_result
 
-        # Continue with the rest of the try-on process
         unique_id = str(uuid.uuid4())
         save_dir = "eval_images"
         os.makedirs(save_dir, exist_ok=True)
@@ -445,75 +436,91 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         else:
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
 
+        # Convert mask to numpy array if it's not already
+        if isinstance(mask, Image.Image):
+            mask = np.array(mask)
+
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
         human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
         human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
 
-        args = apply_net.create_argument_parser().parse_args(('show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'))
-        pose_img = args.func(args,human_img_arg)
-        pose_img = pose_img[:,:,::-1]
+        # Create a parser for apply_net arguments
+        parser = apply_net.create_argument_parser()
+        args = parser.parse_args(['show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'])
+
+        # Use the ShowAction class to process the image
+        show_action = apply_net.ShowAction()
+        cfg = show_action.setup_config(args.cfg, args.model, args, args.opts)
+        context = show_action.create_context(args, cfg)
+        
+        # Create a DefaultPredictor
+        predictor = apply_net.DefaultPredictor(cfg)
+        
+        # Process the image
+        with torch.no_grad():
+            outputs = predictor(human_img_arg)["instances"]
+            pose_img = show_action.execute_on_outputs(context, {"image": human_img_arg}, outputs)
+
         pose_img = Image.fromarray(pose_img).resize((768,1024))
 
-        # Continue with the IDM-VTON pipeline
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-                with torch.no_grad():
-                    prompt = "model is wearing " + garment_des
+                prompt = "model is wearing " + garment_des
+                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                with torch.inference_mode():
+                    (
+                        prompt_embeds,
+                        negative_prompt_embeds,
+                        pooled_prompt_embeds,
+                        negative_pooled_prompt_embeds,
+                    ) = pipe.encode_prompt(
+                        prompt,
+                        num_images_per_prompt=1,
+                        do_classifier_free_guidance=True,
+                        negative_prompt=negative_prompt,
+                    )
+
+                    prompt = "a photo of " + garment_des
                     negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                    if not isinstance(prompt, List):
+                        prompt = [prompt] * 1
+                    if not isinstance(negative_prompt, List):
+                        negative_prompt = [negative_prompt] * 1
                     with torch.inference_mode():
                         (
-                            prompt_embeds,
-                            negative_prompt_embeds,
-                            pooled_prompt_embeds,
-                            negative_pooled_prompt_embeds,
+                            prompt_embeds_c,
+                            _,
+                            _,
+                            _,
                         ) = pipe.encode_prompt(
                             prompt,
                             num_images_per_prompt=1,
-                            do_classifier_free_guidance=True,
+                            do_classifier_free_guidance=False,
                             negative_prompt=negative_prompt,
                         )
 
-                        prompt = "a photo of " + garment_des
-                        negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                        if not isinstance(prompt, List):
-                            prompt = [prompt] * 1
-                        if not isinstance(negative_prompt, List):
-                            negative_prompt = [negative_prompt] * 1
-                        with torch.inference_mode():
-                            (
-                                prompt_embeds_c,
-                                _,
-                                _,
-                                _,
-                            ) = pipe.encode_prompt(
-                                prompt,
-                                num_images_per_prompt=1,
-                                do_classifier_free_guidance=False,
-                                negative_prompt=negative_prompt,
-                            )
-
-                        pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
-                        garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
-                        generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
-                        images = pipe(
-                            prompt_embeds=prompt_embeds.to(device,torch.float16),
-                            negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
-                            pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
-                            negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
-                            num_inference_steps=denoise_steps,
-                            generator=generator,
-                            strength=1.0,
-                            pose_img=pose_img.to(device,torch.float16),
-                            text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
-                            cloth=garm_tensor.to(device,torch.float16),
-                            mask_image=mask,
-                            image=human_img,
-                            height=1024,
-                            width=768,
-                            ip_adapter_image=garm_img.resize((768,1024)),
-                            guidance_scale=2.0,
-                        )[0]
+                    pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
+                    garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
+                    generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
+                    images = pipe(
+                        prompt_embeds=prompt_embeds.to(device,torch.float16),
+                        negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
+                        pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
+                        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                        num_inference_steps=denoise_steps,
+                        generator=generator,
+                        strength=1.0,
+                        pose_img=pose_img.to(device,torch.float16),
+                        text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
+                        cloth=garm_tensor.to(device,torch.float16),
+                        mask_image=mask,
+                        image=human_img,
+                        height=1024,
+                        width=768,
+                        ip_adapter_image=garm_img.resize((768,1024)),
+                        guidance_scale=2.0,
+                    )[0]
 
         if is_checked_crop:
             out_img = images[0].resize(crop_size)
@@ -537,6 +544,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             return images[0], mask_gray, ""
     except Exception as e:
         return None, None, f"An error occurred: {str(e)}"
+
     
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
