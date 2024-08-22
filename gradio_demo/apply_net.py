@@ -9,11 +9,11 @@ import sys
 from typing import Any, ClassVar, Dict, List
 import torch
 
-from detectron2.config import CfgNode, get_cfg
-from detectron2.data.detection_utils import read_image
-from detectron2.engine.defaults import DefaultPredictor
-from detectron2.structures.instances import Instances
-from detectron2.utils.logger import setup_logger
+from gradio_demo.detectron2.config import CfgNode, get_cfg
+from gradio_demo.detectron2.data.detection_utils import read_image
+from gradio_demo.detectron2.engine.defaults import DefaultPredictor
+from gradio_demo.detectron2.structures.instances import Instances
+from gradio_demo.detectron2.utils.logger import setup_logger
 
 from densepose import add_densepose_config
 from densepose.structures import DensePoseChartPredictorOutput, DensePoseEmbeddingPredictorOutput
