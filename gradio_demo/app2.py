@@ -1,11 +1,13 @@
 import sys
 import os
-sys.path.append('/tryon')
+sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
 
 import gradio as gr
+import sys
 import cv2
 import uuid
 import math
+sys.path.append('./')
 from PIL import Image
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
 from src.unet_hacked_garmnet import UNet2DConditionModel as UNet2DConditionModel_ref
@@ -15,28 +17,39 @@ from transformers import (
     CLIPVisionModelWithProjection,
     CLIPTextModel,
     CLIPTextModelWithProjection,
-    AutoTokenizer
 )
 from diffusers import DDPMScheduler, AutoencoderKL
+from typing import List
 import torch
+import os
+from transformers import AutoTokenizer
 import numpy as np
-from preprocess.masking import Masking
+from gradio_demo.utils_mask import Masking
 from torchvision import transforms
+from gradio_demo import apply_net  # Import apply_net from gradio_demo
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
+from gradio_demo.detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
+from PIL import Image as PILImage
 import mediapipe as mp
+import numpy as np
+import cv2
+import sys
 
-# Import the correct config
-from detectron2.config import get_cfg
+# Import the Defocus virtual_try_on function
+from webui3 import virtual_try_on as defocus_virtual_try_on
+
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 masker = Masking()
 
-# Load catalog
+
+
 catalog = []
 garment_images = os.listdir('./gradio_demo/test_images/raw_garments/')
 for i in range(len(garment_images)):
+    # If the file is not an image, skip it
     if not garment_images[i].endswith(('.png', '.jpg', '.jpeg', '.webp')):
         continue
     image_path = f"gradio_demo/test_images/raw_garments/{garment_images[i]}"
@@ -53,7 +66,6 @@ category_dict = {
     "Lower Body": "lower_body",
     "Full Body": "dresses"
 }
-
 
 custom_css = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
@@ -371,6 +383,18 @@ def process_with_defocus(image_path):
     else:
         return None
 
+def process_with_defocus(image_path):
+    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
+    category = "dresses"
+    output_path = f"temp_defocus_output_{uuid.uuid4()}.jpg"
+    
+    result = defocus_virtual_try_on(image_path, prompt, category, output_path)
+    
+    if result:
+        return Image.open(result)
+    else:
+        return None
+
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
         openpose_model.preprocessor.body_estimation.model.to(device)
@@ -381,8 +405,22 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         original_img = dict["background"]
         human_img_orig = original_img.convert("RGB")
 
+        # Check if the image contains a full-body pose
         if not is_full_body_image(human_img_orig):
             return None, None, "Please upload a full-body image showing your entire body, including head, hands, and feet."
+
+        # Save the original image temporarily
+        temp_original_path = f"temp_original_{uuid.uuid4()}.jpg"
+        human_img_orig.save(temp_original_path)
+
+        # Process the image with Defocus
+        defocus_result = process_with_defocus(temp_original_path)
+        
+        if defocus_result is None:
+            return None, None, "Failed to process the image with Defocus."
+
+        # Use the Defocus result as the new human_img_orig
+        human_img_orig = defocus_result
 
         unique_id = str(uuid.uuid4())
         save_dir = "eval_images"
@@ -392,8 +430,9 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
 
         if blur_face:
-            human_img_orig = Image.fromarray(cv2.GaussianBlur(np.array(human_img_orig), (23, 23), 30))
-        human_img_orig.save(human_img_path)
+            face_blur(human_img_orig).save(human_img_path)
+        else:
+            human_img_orig.save(human_img_path)
 
         if is_checked_crop:
             width, height = human_img_orig.size
@@ -410,82 +449,107 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             human_img = human_img_orig.resize((768,1024))
 
         if is_checked:
-            mask = masker.get_mask(human_img, category_dict[category])
+            mask, mask_gray = masker.get_mask(human_img, category_dict[category])
+            mask = mask.resize((768,1024))
         else:
-            mask = Image.fromarray(np.array(dict['layers'][0].convert("RGB").resize((768, 1024))) > 127)
+            mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
+
+        # Convert mask to numpy array if it's not already
+        if isinstance(mask, Image.Image):
+            mask = np.array(mask)
 
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
-        human_img_arg = human_img.resize((384,512))
-        human_img_arg = np.array(human_img_arg)[:,:,::-1]
+        human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
+        human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
 
-        cfg = get_cfg()
-        cfg.merge_from_file('./configs/densepose_rcnn_R_50_FPN_s1x.yaml')
-        cfg.MODEL.WEIGHTS = './ckpt/densepose/model_final_162be9.pkl'
-        cfg.MODEL.DEVICE = 'cuda'
-        
-        pose_img = openpose_model.detect_pose(human_img_arg, cfg)
-        pose_img = Image.fromarray(pose_img[:,:,::-1]).resize((768,1024))
+        args = apply_net.create_argument_parser().parse_args(('show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'))
+        pose_img = args.func(args,human_img_arg)
+        pose_img = pose_img[:,:,::-1]
+        pose_img = Image.fromarray(pose_img).resize((768,1024))
 
         with torch.no_grad():
             with torch.cuda.amp.autocast():
-                prompt = f"model is wearing {garment_des}"
+                prompt = "model is wearing " + garment_des
                 negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                
-                prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds = pipe.encode_prompt(
-                    prompt,
-                    num_images_per_prompt=1,
-                    do_classifier_free_guidance=True,
-                    negative_prompt=negative_prompt,
-                )
+                with torch.inference_mode():
+                    (
+                        prompt_embeds,
+                        negative_prompt_embeds,
+                        pooled_prompt_embeds,
+                        negative_pooled_prompt_embeds,
+                    ) = pipe.encode_prompt(
+                        prompt,
+                        num_images_per_prompt=1,
+                        do_classifier_free_guidance=True,
+                        negative_prompt=negative_prompt,
+                    )
 
-                prompt = f"a photo of {garment_des}"
-                prompt_embeds_c, _, _, _ = pipe.encode_prompt(
-                    [prompt],
-                    num_images_per_prompt=1,
-                    do_classifier_free_guidance=False,
-                    negative_prompt=[negative_prompt],
-                )
+                    prompt = "a photo of " + garment_des
+                    negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                    if not isinstance(prompt, List):
+                        prompt = [prompt] * 1
+                    if not isinstance(negative_prompt, List):
+                        negative_prompt = [negative_prompt] * 1
+                    with torch.inference_mode():
+                        (
+                            prompt_embeds_c,
+                            _,
+                            _,
+                            _,
+                        ) = pipe.encode_prompt(
+                            prompt,
+                            num_images_per_prompt=1,
+                            do_classifier_free_guidance=False,
+                            negative_prompt=negative_prompt,
+                        )
 
-                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device, torch.float16)
-                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device, torch.float16)
-                generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
-                
-                images = pipe(
-                    prompt_embeds=prompt_embeds.to(device, torch.float16),
-                    negative_prompt_embeds=negative_prompt_embeds.to(device, torch.float16),
-                    pooled_prompt_embeds=pooled_prompt_embeds.to(device, torch.float16),
-                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device, torch.float16),
-                    num_inference_steps=denoise_steps,
-                    generator=generator,
-                    strength=1.0,
-                    pose_img=pose_img,
-                    text_embeds_cloth=prompt_embeds_c.to(device, torch.float16),
-                    cloth=garm_tensor,
-                    mask_image=mask,
-                    image=human_img,
-                    height=1024,
-                    width=768,
-                    ip_adapter_image=garm_img.resize((768,1024)),
-                    guidance_scale=2.0,
-                )[0]
+                    pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
+                    garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
+                    generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
+                    images = pipe(
+                        prompt_embeds=prompt_embeds.to(device,torch.float16),
+                        negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
+                        pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
+                        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                        num_inference_steps=denoise_steps,
+                        generator=generator,
+                        strength=1.0,
+                        pose_img=pose_img.to(device,torch.float16),
+                        text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
+                        cloth=garm_tensor.to(device,torch.float16),
+                        mask_image=mask,
+                        image=human_img,
+                        height=1024,
+                        width=768,
+                        ip_adapter_image=garm_img.resize((768,1024)),
+                        guidance_scale=2.0,
+                    )[0]
 
         if is_checked_crop:
             out_img = images[0].resize(crop_size)
             human_img_orig.paste(out_img, (int(left), int(top)))
+
             if blur_face:
-                human_img_orig = Image.fromarray(cv2.GaussianBlur(np.array(human_img_orig), (23, 23), 30))
-            mask_gray.save(masked_img_path)
-            human_img_orig.save(output_img_path)
+                face_blur(mask_gray).save(masked_img_path)
+                face_blur(human_img_orig).save(output_img_path)
+            else:
+                mask_gray.save(masked_img_path)
+                human_img_orig.save(output_img_path)
+
             return human_img_orig, mask_gray, ""
         else:
             if blur_face:
-                images[0] = Image.fromarray(cv2.GaussianBlur(np.array(images[0]), (23, 23), 30))
-            mask_gray.save(masked_img_path)
-            images[0].save(output_img_path)
+                face_blur(mask_gray).save(masked_img_path)
+                face_blur(images[0]).save(output_img_path)
+            else:
+                mask_gray.save(masked_img_path)
+                images[0].save(output_img_path)
             return images[0], mask_gray, ""
     except Exception as e:
         return None, None, f"An error occurred: {str(e)}"
+
+    
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
 garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
