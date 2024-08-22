@@ -14,7 +14,7 @@ import modules.async_worker as worker
 import modules.constants as constants
 import modules.flags as flags
 from modules.util import HWC3, resize_image
-from Masking.masking import Masking
+from gradio_demo.utils_mask import Masking
 import os
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
