@@ -406,6 +406,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         # Use the Defocus result as the new human_img_orig
         human_img_orig = defocus_result
 
+        # Continue with the rest of the try-on process
         unique_id = str(uuid.uuid4())
         save_dir = "eval_images"
         os.makedirs(save_dir, exist_ok=True)
@@ -448,6 +449,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         pose_img = pose_img[:,:,::-1]
         pose_img = Image.fromarray(pose_img).resize((768,1024))
 
+        # Continue with the IDM-VTON pipeline
         with torch.no_grad():
             with torch.cuda.amp.autocast():
                 with torch.no_grad():
