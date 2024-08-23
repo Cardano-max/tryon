@@ -245,7 +245,12 @@ def refresh_everything(refiner_model_name, base_model_name, loras,
     if final_expansion is None:
         final_expansion = FooocusExpansion()
 
-    prepare_text_encoder(async_call=True)
+    try:
+        prepare_text_encoder(async_call=False)  # Change this to False
+    except Exception as e:
+        print(f"Error in prepare_text_encoder: {str(e)}")
+        # Continue even if there's an error
+    
     clear_all_caches()
     return
 
