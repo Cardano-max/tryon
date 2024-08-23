@@ -17,7 +17,6 @@ from preprocess.masking import Masking
 import os
 print(sys.path)
 
-
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 # Initialize Masker
@@ -111,7 +110,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 args.extend(lora)
 
             args.extend([
-                False,  # Current tab (set to True for inpainting)
+                True,  # Current tab (set to True for inpainting)
                 "inpaint",  # Inpaint mode
                 flags.disabled,  # UOV method
                 None,  # UOV input image
@@ -135,9 +134,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 -1,  # Overwrite vary strength
                 modules1.config.default_overwrite_upscale,  # Overwrite upscale strength
                 False,  # Mixing image prompt and vary upscale
-                False,  # Mixing image prompt and inpaint
-                True,  # Debugging CN preprocessor
-                True,  # Skipping CN preprocessor
+                True,  # Mixing image prompt and inpaint
+                False,  # Debugging CN preprocessor
+                False,  # Skipping CN preprocessor
                 100,  # Canny low threshold
                 200,  # Canny high threshold
                 flags.refiner_swap_method,  # Refiner swap method
@@ -220,13 +219,13 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         traceback.print_exc()
         return None
 
-# # Example usage
+# Example usage (commented out)
 # if __name__ == "__main__":
 #     input_image_path = "/path/to/input/image.jpg"
 #     output_image_path = "/path/to/output/image.jpg"
 #     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
 #     category = "dresses"  # or "lower_body" or "full_body"
-
+#
 #     result = virtual_try_on(input_image_path, prompt, category, output_image_path)
 #     if result:
 #         print(f"Virtual try-on completed successfully. Result saved at: {result}")
