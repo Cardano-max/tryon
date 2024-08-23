@@ -35,6 +35,8 @@ from modules1.util import HWC3, resize_image
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 masker = Masking()
 
+from preprocess.humanparsing.run_parsing import Parsing
+from preprocess.openpose.run_openpose import OpenPose
 
 catalog = []
 garment_images = os.listdir('./gradio_demo/test_images/raw_garments/')
