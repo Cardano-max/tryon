@@ -94,7 +94,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 False,  # Advanced checkbox
                 modules1.config.default_styles,  # Style selections
                 flags.Performance.QUALITY.value,  # Performance selection
-                aspect_ratio,  # Aspect ratio selection
+                                aspect_ratio,  # Aspect ratio selection
                 1,  # Image number
                 modules1.config.default_output_format,  # Output format
                 np.random.randint(constants.MIN_SEED, constants.MAX_SEED),  # Random seed
@@ -110,7 +110,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 args.extend(lora)
 
             args.extend([
-                True,  # Current tab (set to True for inpainting)
+                False,  # Current tab (set to True for inpainting)
                 "inpaint",  # Inpaint mode
                 flags.disabled,  # UOV method
                 None,  # UOV input image
@@ -134,9 +134,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 -1,  # Overwrite vary strength
                 modules1.config.default_overwrite_upscale,  # Overwrite upscale strength
                 False,  # Mixing image prompt and vary upscale
-                True,  # Mixing image prompt and inpaint
-                False,  # Debugging CN preprocessor
-                False,  # Skipping CN preprocessor
+                False,  # Mixing image prompt and inpaint
+                True,  # Debugging CN preprocessor
+                True,  # Skipping CN preprocessor
                 100,  # Canny low threshold
                 200,  # Canny high threshold
                 flags.refiner_swap_method,  # Refiner swap method
