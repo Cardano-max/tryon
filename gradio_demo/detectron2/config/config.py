@@ -6,8 +6,16 @@ import inspect
 import logging
 from fvcore.common.config import CfgNode as _CfgNode
 
-from detectron2.utils.file_io import PathManager
+import os
 
+class PathManager:
+    @staticmethod
+    def open(filename, mode="r"):
+        return open(filename, mode)
+    
+    @staticmethod
+    def isfile(filename):
+        return os.path.isfile(filename)
 
 class CfgNode(_CfgNode):
     """
