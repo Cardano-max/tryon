@@ -9,6 +9,7 @@ import mediapipe as mp
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 
+
 def timing(f):
     @wraps(f)
     def wrap(*args, **kw):
