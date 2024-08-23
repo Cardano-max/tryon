@@ -1,3 +1,4 @@
+#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/utils/file_io.py:
 # Copyright (c) Facebook, Inc. and its affiliates.
 from iopath.common.file_io import HTTPURLHandler, OneDrivePathHandler, PathHandler
 from iopath.common.file_io import PathManager as PathManagerBase

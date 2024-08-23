@@ -12,7 +12,8 @@ import torch
 from tabulate import tabulate
 from termcolor import colored
 
-from detectron2.utils.file_io import PathManager
+
+from ..utils.file_io import PathManager
 
 __all__ = ["setup_logger", "log_first_n", "log_every_n", "log_every_n_seconds"]
 

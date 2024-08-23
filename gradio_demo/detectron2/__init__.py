@@ -1,13 +1,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 
-from .utils.env import setup_environment
+# Instead, add these imports:
 from . import config
 from . import data
 from . import engine
 from . import structures
 from . import utils
 
-setup_environment()
 
 
 # This line will be programatically read/write by setup.py.
