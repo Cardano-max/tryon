@@ -12,10 +12,15 @@ import os
 import sys
 from typing import Any, ClassVar, Dict, List
 import torch
-from .detectron2.config import get_cfg, CfgNode
+import sys
+import logging
 
-# Use these local imports
-from .detectron2.config import get_cfg, CfgNode
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+print("Python path:", sys.path)
+
+from gradio_demo.detectron2.config import get_cfg, CfgNode
 logger.debug(f"CfgNode being used: {CfgNode}")
 from .detectron2.data.detection_utils import read_image
 from .detectron2.engine.defaults import DefaultPredictor
