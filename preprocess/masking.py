@@ -9,7 +9,6 @@ import mediapipe as mp
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 
-
 def timing(f):
     @wraps(f)
     def wrap(*args, **kw):
@@ -23,8 +22,18 @@ def timing(f):
 
 class Masking:
     def __init__(self):
-        self.parsing_model = Parsing(-1)
-        self.openpose_model = OpenPose(-1)
+        try:
+            self.parsing_model = Parsing(-1)
+        except Exception as e:
+            print(f"Error loading parsing model: {str(e)}")
+            self.parsing_model = None
+        
+        try:
+            self.openpose_model = OpenPose(-1)
+        except Exception as e:
+            print(f"Error loading OpenPose model: {str(e)}")
+            self.openpose_model = None
+
         self.mp_hands = mp.solutions.hands
         self.mp_drawing = mp.solutions.drawing_utils
         self.hands = self.mp_hands.Hands(static_image_mode=True, max_num_hands=2, min_detection_confidence=0.5)
@@ -41,36 +50,42 @@ class Masking:
         img_resized = img.resize((384, 512), Image.LANCZOS)
         img_np = np.array(img_resized)
         
-        # Get human parsing result
-        parse_result, _ = self.parsing_model(img_resized)
-        parse_array = np.array(parse_result)
-
-        # Get pose estimation
-        keypoints = self.openpose_model(img_resized)
-        pose_data = np.array(keypoints["pose_keypoints_2d"]).reshape((-1, 2))
-
         # Create initial mask based on category
-        if category == 'upper_body':
-            mask = np.isin(parse_array, [self.label_map["upper_clothes"], self.label_map["dress"]])
-        elif category == 'lower_body':
-            mask = np.isin(parse_array, [self.label_map["pants"], self.label_map["skirt"]])
-        elif category == 'dresses':
-            mask = np.isin(parse_array, [self.label_map["upper_clothes"], self.label_map["dress"], 
-                                         self.label_map["pants"], self.label_map["skirt"]])
-        else:
-            raise ValueError("Invalid category. Choose 'upper_body', 'lower_body', or 'dresses'.")
+        mask = np.zeros((512, 384), dtype=bool)
+        
+        if self.parsing_model is not None:
+            # Get human parsing result
+            parse_result, _ = self.parsing_model(img_resized)
+            parse_array = np.array(parse_result)
 
-        # Create arm mask
-        arm_mask = np.isin(parse_array, [self.label_map["left_arm"], self.label_map["right_arm"]])
+            if category == 'upper_body':
+                mask = np.isin(parse_array, [self.label_map["upper_clothes"], self.label_map["dress"]])
+            elif category == 'lower_body':
+                mask = np.isin(parse_array, [self.label_map["pants"], self.label_map["skirt"]])
+            elif category == 'dresses':
+                mask = np.isin(parse_array, [self.label_map["upper_clothes"], self.label_map["dress"], 
+                                            self.label_map["pants"], self.label_map["skirt"]])
+            else:
+                raise ValueError("Invalid category. Choose 'upper_body', 'lower_body', or 'dresses'.")
+        else:
+            print("Parsing model not available. Using simple color-based segmentation.")
+            # Simple color-based segmentation
+            hsv = cv2.cvtColor(img_np, cv2.COLOR_RGB2HSV)
+            mask = cv2.inRange(hsv, (0, 50, 50), (130, 255, 255))
+            mask = mask > 0
+
+        if self.openpose_model is not None:
+            # Get pose estimation
+            keypoints = self.openpose_model(img_resized)
+            pose_data = np.array(keypoints["pose_keypoints_2d"]).reshape((-1, 2))
+        else:
+            print("OpenPose model not available. Skipping pose estimation.")
 
         # Create hand mask using MediaPipe
         hand_mask = self.create_hand_mask(img_np)
 
-        # Combine arm and hand mask
-        arm_hand_mask = np.logical_or(arm_mask, hand_mask)
-
-        # Remove arms and hands from the mask
-        mask = np.logical_and(mask, np.logical_not(arm_hand_mask))
+        # Remove hands from the mask
+        mask = np.logical_and(mask, np.logical_not(hand_mask))
 
         # Refine the mask
         mask = self.refine_mask(mask)

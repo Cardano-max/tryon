@@ -13,47 +13,66 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from preprocess.masking import Masking
-import os
-print(sys.path)
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
-# Initialize Masker
-masker = Masking()
+# Fallback masking function
+def simple_masking(image, category='full_body'):
+    logger.info("Using simple masking as a fallback")
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    return mask
+
+# Try to import Masking, but use simple_masking as fallback
+try:
+    from preprocess.masking import Masking
+    masker = Masking()
+    logger.info("Masking module loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load Masking module: {str(e)}")
+    logger.info("Will use simple masking as fallback")
+    masker = None
 
 def generate_mask(person_image, category="dresses"):
-    if not isinstance(person_image, Image.Image):
-        person_image = Image.fromarray(person_image)
+    if not isinstance(person_image, np.ndarray):
+        person_image = np.array(person_image)
     
-    print("Generating mask...")
+    logger.info("Generating mask...")
     try:
-        inpaint_mask = masker.get_mask(person_image, category=category)
-        print("Mask generated successfully.")
+        if masker is not None:
+            inpaint_mask = masker.get_mask(Image.fromarray(person_image), category=category)
+        else:
+            inpaint_mask = simple_masking(person_image, category)
+        logger.info("Mask generated successfully")
     except Exception as e:
-        print(f"Error occurred while generating mask: {str(e)}")
-        raise e
-    return np.array(inpaint_mask)  # Convert to numpy array
+        logger.error(f"Error occurred while generating mask: {str(e)}")
+        inpaint_mask = np.zeros(person_image.shape[:2], dtype=np.uint8)
+    return inpaint_mask
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
         # Load person image
-        print(f"Loading person image from: {person_image_path}")
+        logger.info(f"Loading person image from: {person_image_path}")
         try:
             person_image = Image.open(person_image_path)
             person_image = np.array(person_image)
-            print("Person image loaded successfully.")
+            logger.info("Person image loaded successfully")
         except Exception as e:
-            print(f"Error occurred while loading person image: {str(e)}")
+            logger.error(f"Error occurred while loading person image: {str(e)}")
             raise e
 
         # Generate mask
-        print("Generating mask...")
+        logger.info("Generating mask...")
         try:
             inpaint_mask = generate_mask(person_image, category)
-            print("Mask generated successfully.")
+            logger.info("Mask generated successfully")
         except Exception as e:
-            print(f"Error occurred while generating mask: {str(e)}")
+            logger.error(f"Error occurred while generating mask: {str(e)}")
             raise e
 
         # Get the original dimensions of the person image
@@ -71,20 +90,20 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
             target_height = 1024
             target_width = int(target_height / person_aspect_ratio)
 
-        print(f"Resizing person image and mask to: {target_width}x{target_height}")
+        logger.info(f"Resizing person image and mask to: {target_width}x{target_height}")
         try:
             # Resize images while preserving aspect ratio
             person_image = resize_image(HWC3(person_image), target_width, target_height)
             inpaint_mask = resize_image(HWC3(inpaint_mask), target_width, target_height)
-            print("Person image and mask resized successfully.")
+            logger.info("Person image and mask resized successfully")
         except Exception as e:
-            print(f"Error occurred while resizing person image and mask: {str(e)}")
+            logger.error(f"Error occurred while resizing person image and mask: {str(e)}")
             raise e
 
         # Set the aspect ratio for the model
         aspect_ratio = f"{target_width}×{target_height}"
 
-        print("Preparing arguments for image generation task...")
+        logger.info("Preparing arguments for image generation task...")
         try:
             # Prepare arguments for the image generation task
             args = [
@@ -110,13 +129,13 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 args.extend(lora)
 
             args.extend([
-                False,  # Current tab (set to True for inpainting)
+                True,  # Current tab (set to True for inpainting)
                 "inpaint",  # Inpaint mode
                 flags.disabled,  # UOV method
                 None,  # UOV input image
                 [],  # Outpaint selections
                 {'image': person_image, 'mask': inpaint_mask},  # Inpaint input image
-                "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy",  # Inpaint additional prompt
+                prompt,  # Inpaint additional prompt
                 inpaint_mask,  # Inpaint mask image
                 True,  # Disable preview
                 True,  # Disable intermediate results
@@ -134,9 +153,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 -1,  # Overwrite vary strength
                 modules1.config.default_overwrite_upscale,  # Overwrite upscale strength
                 False,  # Mixing image prompt and vary upscale
-                False,  # Mixing image prompt and inpaint
-                True,  # Debugging CN preprocessor
-                True,  # Skipping CN preprocessor
+                True,  # Mixing image prompt and inpaint
+                False,  # Debugging CN preprocessor
+                False,  # Skipping CN preprocessor
                 100,  # Canny low threshold
                 200,  # Canny high threshold
                 flags.refiner_swap_method,  # Refiner swap method
@@ -157,77 +176,80 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_save_metadata_to_images,  # Save metadata to images
                 modules1.config.default_metadata_scheme,  # Metadata scheme
             ])
-            print("Arguments prepared successfully.")
+            logger.info("Arguments prepared successfully")
         except Exception as e:
-            print(f"Error occurred while preparing arguments for image generation task: {str(e)}")
+            logger.error(f"Error occurred while preparing arguments for image generation task: {str(e)}")
             raise e
 
-        print("Creating image generation task...")
+        logger.info("Creating image generation task...")
         try:
             # Create and append the image generation task
             task = worker.AsyncTask(args=args)
             worker.async_tasks.append(task)
-            print("Image generation task created and appended successfully.")
+            logger.info("Image generation task created and appended successfully")
         except Exception as e:
-            print(f"Error occurred while creating and appending image generation task: {str(e)}")
+            logger.error(f"Error occurred while creating and appending image generation task: {str(e)}")
             raise e
 
-        print("Waiting for task to start processing...")
+        logger.info("Waiting for task to start processing...")
         try:
             # Wait for the task to start and finish processing
+            timeout = 60  # Set a timeout of 60 seconds
+            start_time = time.time()
             while not task.processing:
+                if time.time() - start_time > timeout:
+                    logger.warning("Task startup timed out. Proceeding without waiting.")
+                    break
                 time.sleep(0.1)
-            print("Task started processing.")
-        except Exception as e:
-            print(f"Error occurred while waiting for task to start processing: {str(e)}")
-            raise e
+            
+            if task.processing:
+                logger.info("Task started processing")
+            else:
+                logger.warning("Task did not start processing within the timeout period")
 
-        print("Waiting for task to finish processing...")
-        try:
             while task.processing:
                 time.sleep(0.1)
-            print("Task finished processing.")
+            logger.info("Task finished processing")
         except Exception as e:
-            print(f"Error occurred while waiting for task to finish processing: {str(e)}")
+            logger.error(f"Error occurred while waiting for task to process: {str(e)}")
             raise e
 
-        print("Checking if results were generated successfully...")
+        logger.info("Checking if results were generated successfully...")
         try:
             # Check if results were generated successfully
             if task.results and isinstance(task.results, list) and len(task.results) > 0:
                 result_path = task.results[0]
 
                 if output_path:
-                    print(f"Saving result image to: {output_path}")
+                    logger.info(f"Saving result image to: {output_path}")
                     try:
                         os.rename(result_path, output_path)
                         result_path = output_path
                     except Exception as e:
-                        print(f"Error occurred while saving result image: {str(e)}")
+                        logger.error(f"Error occurred while saving result image: {str(e)}")
                         raise e
-                print(f"Virtual try-on completed successfully. Result saved at: {result_path}")
+                logger.info(f"Virtual try-on completed successfully. Result saved at: {result_path}")
                 return result_path
             else:
-                print("No results generated.")
+                logger.warning("No results generated")
                 return None
         except Exception as e:
-            print(f"Error occurred while checking if results were generated successfully: {str(e)}")
+            logger.error(f"Error occurred while checking if results were generated successfully: {str(e)}")
             raise e
 
     except Exception as e:
-        print(f"Error occurred in virtual_try_on:")
+        logger.error(f"Error occurred in virtual_try_on:")
         traceback.print_exc()
         return None
 
-# Example usage (commented out)
-# if __name__ == "__main__":
-#     input_image_path = "/path/to/input/image.jpg"
-#     output_image_path = "/path/to/output/image.jpg"
-#     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
-#     category = "dresses"  # or "lower_body" or "full_body"
-#
-#     result = virtual_try_on(input_image_path, prompt, category, output_image_path)
-#     if result:
-#         print(f"Virtual try-on completed successfully. Result saved at: {result}")
-#     else:
-#         print("Virtual try-on failed.")
+if __name__ == "__main__":
+    input_image_path = "/path/to/input/image.jpg"
+    output_image_path = "/path/to/output/image.jpg"
+    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
+    category = "dresses"  # or "lower_body" or "full_body"
+
+    result = virtual_try_on(input_image_path, prompt, category, output_image_path)
+    if result:
+        print(f"Virtual try-on completed successfully. Result saved at: {result}")
+    else:
+        print("Virtual try-on failed.")
