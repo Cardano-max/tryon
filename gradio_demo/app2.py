@@ -555,9 +555,7 @@ def process_image(image):
     result = apply_densepose(image, config_path, model_path)
     return result
 
-# Set up your Gradio interface
-iface = gr.Interface(fn=process_image, inputs="image", outputs="image")
-iface.launch()
+
 
     
 
@@ -655,5 +653,5 @@ with gr.Blocks(css=custom_css) as demo:
         outputs=[output_image, output_mask, gr.Textbox(label="Error Message")]
     )
 
-if __name__ == "__main__":
-    demo.launch(share=True)
+iface = gr.Interface(fn=process_image, inputs="image", outputs="image")
+iface.launch(share=True)
