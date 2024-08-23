@@ -578,7 +578,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         print("Error occurred in start_tryon:")
         traceback.print_exc()
         return None, None, f"An error occurred: {str(e)}"
-    
+
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
 garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
