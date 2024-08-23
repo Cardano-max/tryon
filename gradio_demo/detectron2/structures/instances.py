@@ -1,3 +1,6 @@
+
+#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/structures/instances.py::
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 import itertools
 import warnings

@@ -1,3 +1,4 @@
+#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/data/__init__.py:
 # Copyright (c) Facebook, Inc. and its affiliates.
 from . import transforms  # isort:skip
 
@@ -15,5 +16,6 @@ from .dataset_mapper import DatasetMapper
 
 # ensure the builtin datasets are registered
 from . import datasets, samplers  # isort:skip
+from .detection_utils import read_image
 
 __all__ = [k for k in globals().keys() if not k.startswith("_")]

@@ -1,6 +1,11 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 
 from .utils.env import setup_environment
+from . import config
+from . import data
+from . import engine
+from . import structures
+from . import utils
 
 setup_environment()
 

@@ -1,3 +1,5 @@
+#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/utils/logger.py::
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 import atexit
 import functools

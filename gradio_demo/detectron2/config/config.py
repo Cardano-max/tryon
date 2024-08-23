@@ -1,3 +1,5 @@
+#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/config/config.py::
+
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates.
 

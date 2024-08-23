@@ -1,4 +1,6 @@
+#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/engine/__init__.py:
 # Copyright (c) Facebook, Inc. and its affiliates.
+from .defaults import DefaultPredictor
 
 from .launch import *
 from .train_loop import *
@@ -17,3 +19,4 @@ from .defaults import (
     DefaultPredictor,
     DefaultTrainer,
 )
+
