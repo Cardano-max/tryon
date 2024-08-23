@@ -546,16 +546,6 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             return images[0], mask_gray, ""
     except Exception as e:
         return None, None, f"An error occurred: {str(e)}"
-    
-from gradio_demo.apply_net import apply_densepose
-
-def process_image(image):
-    config_path = "/tryon/configs/densepose_rcnn_R_50_FPN_s1x.yaml"
-    model_path = "/tryon/models/model_final_162be9.pkl"
-    result = apply_densepose(image, config_path, model_path)
-    return result
-
-
 
     
 
@@ -653,5 +643,5 @@ with gr.Blocks(css=custom_css) as demo:
         outputs=[output_image, output_mask, gr.Textbox(label="Error Message")]
     )
 
-iface = gr.Interface(fn=process_image, inputs="image", outputs="image")
-iface.launch(share=True)
+if __name__ == "__main__":
+    demo.launch(share=True)
