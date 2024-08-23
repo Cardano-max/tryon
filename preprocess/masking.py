@@ -19,6 +19,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Import SegBody and other necessary models
 from SegBody import segment_body
 from preprocess.humanparsing.run_parsing import Parsing
+from preprocess.openpose.run_openpose import OpenPose
+
 
 def timing(f):
     @wraps(f)
