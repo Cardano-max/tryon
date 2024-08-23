@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 from detectron2.layers import Conv2d
 
 from .registry import ROI_DENSEPOSE_HEAD_REGISTRY

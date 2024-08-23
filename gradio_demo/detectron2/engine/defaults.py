@@ -1,5 +1,3 @@
-
-#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/engine/defaults.py::
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates.
 
@@ -25,7 +23,7 @@ from torch.nn.parallel import DistributedDataParallel
 
 import detectron2.data.transforms as T
 from detectron2.checkpoint import DetectionCheckpointer
-from gradio_demo.detectron2.config import CfgNode, LazyConfig
+from detectron2.config import CfgNode, LazyConfig
 from detectron2.data import (
     MetadataCatalog,
     build_detection_test_loader,

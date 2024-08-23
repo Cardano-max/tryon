@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
+from .compat import downgrade_config, upgrade_config
 
 from .instantiate import instantiate
 from .lazy import LazyCall, LazyConfig
@@ -6,7 +7,7 @@ from .lazy import LazyCall, LazyConfig
 from .config import CfgNode, get_cfg
 
 
-from .compat import downgrade_config, upgrade_config
+__all__ = ["CfgNode", "get_cfg"]
 
 __all__ = [
     "CfgNode",

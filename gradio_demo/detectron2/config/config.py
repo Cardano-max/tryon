@@ -1,5 +1,3 @@
-#/Users/ateeb.taseer/tryon2/arbi-tryon/gradio_demo/detectron2/config/config.py::
-
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates.
 
@@ -8,20 +6,8 @@ import inspect
 import logging
 from fvcore.common.config import CfgNode as _CfgNode
 
-class CfgNode(_CfgNode):
-    """
-    The same as `fvcore.common.config.CfgNode`, but with different
-    behavior in `clone()` that tries to maintain backward compatibility:
-    """
+from detectron2.utils.file_io import PathManager
 
-    def clone(self):
-        return type(self)(self)
-
-
-
-
-
-from ..utils.file_io import PathManager
 
 class CfgNode(_CfgNode):
     """

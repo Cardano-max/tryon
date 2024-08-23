@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, Iterable, List, Set, Type, Union
 import torch
 
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 
 from .lr_scheduler import WarmupCosineLR, WarmupMultiStepLR
 

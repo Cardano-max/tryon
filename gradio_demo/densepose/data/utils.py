@@ -3,8 +3,8 @@
 import os
 from typing import Dict, Optional
 
-from gradio_demo.detectron2.config import CfgNode
-logger.debug(f"CfgNode being used: {CfgNode}")
+from detectron2.config import CfgNode
+
 
 def is_relative_local_path(path: str) -> bool:
     path_str = os.fsdecode(path)

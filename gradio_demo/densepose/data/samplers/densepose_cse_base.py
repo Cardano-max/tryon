@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 import torch
 from torch.nn import functional as F
 
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 from detectron2.structures import Instances
 
 from densepose.converters.base import IntTupleBox

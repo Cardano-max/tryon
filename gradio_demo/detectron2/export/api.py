@@ -6,7 +6,7 @@ import torch
 from caffe2.proto import caffe2_pb2
 from torch import nn
 
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 from detectron2.utils.file_io import PathManager
 
 from .caffe2_inference import ProtobufDetectionModel

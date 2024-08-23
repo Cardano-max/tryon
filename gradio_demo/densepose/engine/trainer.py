@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from detectron2.checkpoint import DetectionCheckpointer
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 from detectron2.engine import DefaultTrainer
 from detectron2.evaluation import (
     DatasetEvaluator,

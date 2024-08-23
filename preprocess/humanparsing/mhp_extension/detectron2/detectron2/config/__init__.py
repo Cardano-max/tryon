@@ -1,6 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from .compat import downgrade_config, upgrade_config
-from gradio_demo.detectron2.config import CfgNode, get_cfg, global_cfg, set_global_cfg, configurable
+from .config import CfgNode, get_cfg, global_cfg, set_global_cfg, configurable
 
 __all__ = [
     "CfgNode",

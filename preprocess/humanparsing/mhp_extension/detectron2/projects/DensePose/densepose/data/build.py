@@ -7,7 +7,7 @@ import operator
 from typing import Any, Callable, Collection, Dict, Iterable, List, Optional
 import torch
 
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 from detectron2.data import samplers
 from detectron2.data.build import (
     load_proposals_into_dataset,

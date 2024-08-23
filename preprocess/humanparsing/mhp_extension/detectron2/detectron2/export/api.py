@@ -6,7 +6,7 @@ import torch
 from caffe2.proto import caffe2_pb2
 from torch import nn
 
-from gradio_demo.detectron2.config import CfgNode as CN
+from detectron2.config import CfgNode as CN
 
 from .caffe2_export import export_caffe2_detection_model
 from .caffe2_export import export_onnx_model as export_onnx_model_impl

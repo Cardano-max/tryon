@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from gradio_demo.detectron2.config import CfgNode as CN
+from detectron2.config import CfgNode as CN
 
 
 def add_pointrend_config(cfg):
