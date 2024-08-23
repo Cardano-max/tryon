@@ -203,13 +203,19 @@ def clear_all_caches():
 
 @torch.no_grad()
 @torch.inference_mode()
-def prepare_text_encoder(async_call=False):
+def prepare_text_encoder(async_call=True):
+    if async_call:
+        # TODO: make sure that this is always called in an async way so that users cannot feel it.
+        pass
     assert_model_integrity()
     try:
-        ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
+        for model in [final_clip.patcher, final_expansion.patcher]:
+            if hasattr(model, 'to'):
+                model.to(device='cpu')  # Use CPU instead of GPU
+        # Comment out or remove the following line:
+        # ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
     except Exception as e:
-        print(f"Error loading models to GPU: {str(e)}")
-        # Continue even if there's an error
+        print(f"Warning: Failed to prepare text encoder: {str(e)}")
     return
 
 
