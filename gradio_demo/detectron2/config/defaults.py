@@ -1,5 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-from .config import CfgNode as CN
+from gradio_demo.detectron2.config import CfgNode as CN
 
 # NOTE: given the new config system
 # (https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html),

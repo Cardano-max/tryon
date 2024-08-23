@@ -3,7 +3,7 @@
 from typing import Any, List
 import torch
 
-from detectron2.config import CfgNode
+from gradio_demo.detectron2.config import CfgNode
 from detectron2.structures import Instances
 
 from .mask import MaskLoss

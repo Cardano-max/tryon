@@ -13,7 +13,7 @@ from torch._C import ListType
 from torch.onnx import register_custom_op_symbolic
 
 from detectron2 import model_zoo
-from detectron2.config import CfgNode, LazyConfig, instantiate
+from gradio_demo.detectron2.config import CfgNode, LazyConfig, instantiate
 from detectron2.data import DatasetCatalog
 from detectron2.data.detection_utils import read_image
 from detectron2.modeling import build_model

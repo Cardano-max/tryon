@@ -8,7 +8,7 @@ from typing import Optional
 import torch
 from torch import nn
 
-from detectron2.config import CfgNode
+from gradio_demo.detectron2.config import CfgNode
 from detectron2.utils.file_io import PathManager
 
 from .vertex_direct_embedder import VertexDirectEmbedder

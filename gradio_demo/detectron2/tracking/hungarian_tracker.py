@@ -9,7 +9,7 @@ from scipy.optimize import linear_sum_assignment
 from detectron2.config import configurable
 from detectron2.structures import Boxes, Instances
 
-from ..config.config import CfgNode as CfgNode_
+from gradio_demo.detectron2.config import CfgNode as CfgNode_
 from .base_tracker import BaseTracker
 
 

@@ -9,7 +9,7 @@ from detectron2.config import configurable
 from detectron2.structures import Boxes, Instances
 from detectron2.structures.boxes import pairwise_iou
 
-from ..config.config import CfgNode as CfgNode_
+from gradio_demo.detectron2.config import CfgNode as CfgNode_
 from .base_tracker import TRACKER_HEADS_REGISTRY, BaseTracker
 
 

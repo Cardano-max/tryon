@@ -1,3 +1,10 @@
+import sys
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+print("Python path:", sys.path)
 import argparse
 import glob
 import logging
@@ -9,6 +16,7 @@ from .detectron2.config import get_cfg, CfgNode
 
 # Use these local imports
 from .detectron2.config import get_cfg, CfgNode
+logger.debug(f"CfgNode being used: {CfgNode}")
 from .detectron2.data.detection_utils import read_image
 from .detectron2.engine.defaults import DefaultPredictor
 from .detectron2.structures.instances import Instances
@@ -41,6 +49,8 @@ from densepose.vis.extractor import (
     DensePoseResultExtractor,
     create_extractor,
 )
+
+
 
 DOC = """Apply Net - a tool to print / visualize DensePose results
 """
@@ -106,17 +116,20 @@ class InferenceAction(Action):
         return out_pose
 
     @classmethod
-    def setup_config(
-        cls: type, config_fpath: str, model_fpath: str, args: argparse.Namespace, opts: List[str]
-    ):
+    def setup_config(cls: type, config_fpath: str, model_fpath: str, args: argparse.Namespace, opts: List[str]):
+        logger.debug(f"Setting up config with path: {config_fpath}")
         cfg = get_cfg()
+        logger.debug(f"Config type after get_cfg: {type(cfg)}")
         add_densepose_config(cfg)
+        logger.debug(f"Config type after add_densepose_config: {type(cfg)}")
         cfg.merge_from_file(config_fpath)
+        logger.debug(f"Config type after merge_from_file: {type(cfg)}")
         cfg.merge_from_list(args.opts)
         if opts:
             cfg.merge_from_list(opts)
         cfg.MODEL.WEIGHTS = model_fpath
         cfg.freeze()
+        logger.debug(f"Final config type: {type(cfg)}")
         return cfg
 
     @classmethod

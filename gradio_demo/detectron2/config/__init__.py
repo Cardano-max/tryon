@@ -4,7 +4,7 @@ from .compat import downgrade_config, upgrade_config
 from .instantiate import instantiate
 from .lazy import LazyCall, LazyConfig
 
-from .config import CfgNode, get_cfg
+from gradio_demo.detectron2.config import CfgNode
 
 __all__ = ["CfgNode", "get_cfg"]
 

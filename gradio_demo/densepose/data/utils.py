@@ -3,7 +3,7 @@
 import os
 from typing import Dict, Optional
 
-from detectron2.config import CfgNode
+from gradio_demo.detectron2.config import CfgNode
 
 
 def is_relative_local_path(path: str) -> bool:

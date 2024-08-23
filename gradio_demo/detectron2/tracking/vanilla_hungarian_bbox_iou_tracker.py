@@ -4,7 +4,7 @@
 import numpy as np
 from typing import List
 
-from detectron2.config import CfgNode as CfgNode_
+from gradio_demo.detectron2.config import CfgNode as CfgNode_
 from detectron2.config import configurable
 from detectron2.structures import Instances
 from detectron2.structures.boxes import pairwise_iou

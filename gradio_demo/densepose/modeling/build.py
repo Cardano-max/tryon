@@ -3,7 +3,7 @@
 from typing import Optional
 from torch import nn
 
-from detectron2.config import CfgNode
+from gradio_demo.detectron2.config import CfgNode
 
 from .cse.embedder import Embedder
 from .filter import DensePoseDataFilter

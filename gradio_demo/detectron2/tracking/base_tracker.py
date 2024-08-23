@@ -3,7 +3,7 @@
 from detectron2.config import configurable
 from detectron2.utils.registry import Registry
 
-from ..config.config import CfgNode as CfgNode_
+from gradio_demo.detectron2.config import CfgNode as CfgNode_
 from ..structures import Instances
 
 TRACKER_HEADS_REGISTRY = Registry("TRACKER_HEADS")

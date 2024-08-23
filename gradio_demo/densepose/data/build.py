@@ -9,7 +9,8 @@ from typing import Any, Callable, Collection, Dict, Iterable, List, Optional, Se
 import torch
 from torch.utils.data.dataset import Dataset
 
-from detectron2.config import CfgNode
+from gradio_demo.detectron2.config import CfgNode
+
 from detectron2.data.build import build_detection_test_loader as d2_build_detection_test_loader
 from detectron2.data.build import build_detection_train_loader as d2_build_detection_train_loader
 from detectron2.data.build import (
