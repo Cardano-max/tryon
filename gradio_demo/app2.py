@@ -1,8 +1,6 @@
 import sys
 import os
 sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
-from PIL import Image
-
 
 import gradio as gr
 import cv2
@@ -366,44 +364,84 @@ def is_full_body_image(image):
     
     return True
 
-
 def process_with_defocus(image_path):
-    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
-    category = "dresses"
-    output_path = f"temp_defocus_output_{uuid.uuid4()}.jpg"
-    
-    result = defocus_virtual_try_on(image_path, prompt, category, output_path)
-    
-    if result:
-        return Image.open(result)
-    else:
+    try:
+        prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
+        category = "dresses"
+        
+        print("Processing image with Defocus...")
+        result = defocus_virtual_try_on(image_path, prompt, category)
+        
+        if result:
+            print(f"Defocus processing completed. Result saved at: {result}")
+            return Image.open(result)
+        else:
+            print("Defocus processing failed.")
+            return None
+    except Exception as e:
+        print(f"Error occurred in process_with_defocus: {str(e)}")
+        traceback.print_exc()
         return None
 
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
-        openpose_model.preprocessor.body_estimation.model.to(device)
-        pipe.to(device)
-        pipe.unet_encoder.to(device)
+        print("Moving models to device...")
+        try:
+            openpose_model.preprocessor.body_estimation.model.to(device)
+            pipe.to(device)
+            pipe.unet_encoder.to(device)
+            print("Models moved to device successfully.")
+        except Exception as e:
+            print(f"Error occurred while moving models to device: {str(e)}")
+            raise e
 
-        garm_img = garm_img.convert("RGB").resize((768,1024))
-        original_img = dict["background"]
-        human_img_orig = original_img.convert("RGB")
+        print("Resizing garment image...")
+        try:
+            garm_img = garm_img.convert("RGB").resize((768,1024))
+            print("Garment image resized successfully.")
+        except Exception as e:
+            print(f"Error occurred while resizing garment image: {str(e)}")
+            raise e
 
-        # Check if the image contains a full-body pose
-        if not is_full_body_image(human_img_orig):
-            return None, None, "Please upload a full-body image showing your entire body, including head, hands, and feet."
+        print("Loading original image...")
+        try:
+            original_img = dict["background"]
+            human_img_orig = original_img.convert("RGB")
+            print("Original image loaded successfully.")
+        except Exception as e:
+            print(f"Error occurred while loading original image: {str(e)}")
+            raise e
 
-        # Save the original image temporarily
+        print("Checking if image contains a full-body pose...")
+        try:
+            if not is_full_body_image(human_img_orig):
+                print("Image does not contain a full-body pose.")
+                return None, None, "Please upload a full-body image showing your entire body, including head, hands, and feet."
+        except Exception as e:
+            print(f"Error occurred while checking full-body pose: {str(e)}")
+            raise e
+
         temp_original_path = f"temp_original_{uuid.uuid4()}.jpg"
-        human_img_orig.save(temp_original_path)
+        print(f"Saving original image temporarily at: {temp_original_path}")
+        try:
+            human_img_orig.save(temp_original_path)
+            print("Original image saved temporarily.")
+        except Exception as e:
+            print(f"Error occurred while saving original image temporarily: {str(e)}")
+            raise e
 
-        # Process the image with Defocus
-        defocus_result = process_with_defocus(temp_original_path)
+        print("Processing image with Defocus...")
+        try:
+            defocus_result = process_with_defocus(temp_original_path)
+        except Exception as e:
+            print(f"Error occurred while processing image with Defocus: {str(e)}")
+            raise e
         
         if defocus_result is None:
+            print("Defocus processing failed.")
             return None, None, "Failed to process the image with Defocus."
 
-        # Use the Defocus result as the new human_img_orig
+        print("Defocus processing completed successfully.")
         human_img_orig = defocus_result
 
         unique_id = str(uuid.uuid4())
@@ -414,97 +452,173 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
 
         if blur_face:
-            face_blur(human_img_orig).save(human_img_path)
+            print("Blurring faces in the image...")
+            try:
+                face_blur(human_img_orig).save(human_img_path)
+                print("Faces blurred and image saved.")
+            except Exception as e:
+                print(f"Error occurred while blurring faces: {str(e)}")
+                raise e
         else:
-            human_img_orig.save(human_img_path)
+            print("Saving image without face blurring...")
+            try:
+                human_img_orig.save(human_img_path)
+                print("Image saved without face blurring.")
+            except Exception as e:
+                print(f"Error occurred while saving image without face blurring: {str(e)}")
+                raise e
 
         if is_checked_crop:
-            width, height = human_img_orig.size
-            target_width = int(min(width, height * (3 / 4)))
-            target_height = int(min(height, width * (4 / 3)))
-            left = (width - target_width) / 2
-            top = (height - target_height) / 2
-            right = (width + target_width) / 2
-            bottom = (height + target_height) / 2
-            cropped_img = human_img_orig.crop((left, top, right, bottom))
-            crop_size = cropped_img.size
-            human_img = cropped_img.resize((768,1024))
+            print("Cropping and resizing image...")
+            try:
+                width, height = human_img_orig.size
+                target_width = int(min(width, height * (3 / 4)))
+                target_height = int(min(height, width * (4 / 3)))
+                left = (width - target_width) / 2
+                top = (height - target_height) / 2
+                right = (width + target_width) / 2
+                bottom = (height + target_height) / 2
+                cropped_img = human_img_orig.crop((left, top, right, bottom))
+                crop_size = cropped_img.size
+                human_img = cropped_img.resize((768,1024))
+                print("Image cropped and resized successfully.")
+            except Exception as e:
+                print(f"Error occurred while cropping and resizing image: {str(e)}")
+                raise e
         else:
-            human_img = human_img_orig.resize((768,1024))
+            print("Resizing image without cropping...")
+            try:
+                human_img = human_img_orig.resize((768,1024))
+                print("Image resized without cropping.")
+            except Exception as e:
+                print(f"Error occurred while resizing image without cropping: {str(e)}")
+                raise e
 
         if is_checked:
-            mask, mask_gray = masker.get_mask(human_img, category_dict[category])
-            mask = mask.resize((768,1024))
+            print("Generating mask using AI-powered auto-masking...")
+            try:
+                mask, mask_gray = masker.get_mask(human_img, category_dict[category])
+                mask = mask.resize((768,1024))
+                print("Mask generated using AI-powered auto-masking.")
+            except Exception as e:
+                print(f"Error occurred while generating mask using AI-powered auto-masking: {str(e)}")
+                raise e
         else:
-            mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
+            print("Generating mask using user-provided layer...")
+            try:
+                mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
+                print("Mask generated using user-provided layer.")
+            except Exception as e:
+                print(f"Error occurred while generating mask using user-provided layer: {str(e)}")
+                raise e
 
-        # Convert mask to numpy array if it's not already
         if isinstance(mask, Image.Image):
             mask = np.array(mask)
 
-        mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
-        mask_gray = to_pil_image((mask_gray+1.0)/2.0)
-        human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
-        human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
+        print("Preparing masked image...")
+        try:
+            mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
+            mask_gray = to_pil_image((mask_gray+1.0)/2.0)
+            human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
+            human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
+            print("Masked image prepared.")
+        except Exception as e:
+            print(f"Error occurred while preparing masked image: {str(e)}")
+            raise e
 
-        # Create a parser for apply_net arguments
-        parser = apply_net.create_argument_parser()
-        args = parser.parse_args(['show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'])
+        print("Creating parser for apply_net arguments...")
+        try:
+            parser = apply_net.create_argument_parser()
+            args = parser.parse_args(['show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'])
+            print("Parser created for apply_net arguments.")
+        except Exception as e:
+            print(f"Error occurred while creating parser for apply_net arguments: {str(e)}")
+            raise e
 
-        # Use the ShowAction class to process the image
-        show_action = apply_net.ShowAction()
-        cfg = show_action.setup_config(args.cfg, args.model, args, args.opts)
-        context = show_action.create_context(args, cfg)
+        print("Using ShowAction class to process the image...")
+        try:
+            show_action = apply_net.ShowAction()
+            cfg = show_action.setup_config(args.cfg, args.model, args, args.opts)
+            context = show_action.create_context(args, cfg)
+            print("ShowAction class initialized.")
+        except Exception as e:
+            print(f"Error occurred while initializing ShowAction class: {str(e)}")
+            raise e
         
-        # Create a DefaultPredictor
-        predictor = apply_net.DefaultPredictor(cfg)
+        print("Creating DefaultPredictor...")
+        try:
+            predictor = apply_net.DefaultPredictor(cfg)
+            print("DefaultPredictor created.")
+        except Exception as e:
+            print(f"Error occurred while creating DefaultPredictor: {str(e)}")
+            raise e
         
-        # Process the image
-        with torch.no_grad():
-            outputs = predictor(human_img_arg)["instances"]
-            pose_img = show_action.execute_on_outputs(context, {"image": human_img_arg}, outputs)
+        print("Processing the image...")
+        try:
+            with torch.no_grad():
+                outputs = predictor(human_img_arg)["instances"]
+                pose_img = show_action.execute_on_outputs(context, {"image": human_img_arg}, outputs)
+                print("Image processed.")
+        except Exception as e:
+            print(f"Error occurred while processing the image: {str(e)}")
+            raise e
 
-        pose_img = Image.fromarray(pose_img).resize((768,1024))
+        print("Resizing pose image...")
+        try:
+            pose_img = Image.fromarray(pose_img).resize((768,1024))
+            print("Pose image resized.")
+        except Exception as e:
+            print(f"Error occurred while resizing pose image: {str(e)}")
+            raise e
 
         with torch.no_grad():
             with torch.cuda.amp.autocast():
                 prompt = "model is wearing " + garment_des
                 negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                with torch.inference_mode():
-                    (
-                        prompt_embeds,
-                        negative_prompt_embeds,
-                        pooled_prompt_embeds,
-                        negative_pooled_prompt_embeds,
-                    ) = pipe.encode_prompt(
+                try:
+                    print("Encoding prompts...")
+                    prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds = pipe.encode_prompt(
                         prompt,
                         num_images_per_prompt=1,
                         do_classifier_free_guidance=True,
                         negative_prompt=negative_prompt,
                     )
+                    print("Prompts encoded successfully.")
+                except Exception as e:
+                    print(f"Error occurred while encoding prompts: {str(e)}")
+                    raise e
 
-                    prompt = "a photo of " + garment_des
-                    negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                    if not isinstance(prompt, List):
-                        prompt = [prompt] * 1
-                    if not isinstance(negative_prompt, List):
-                        negative_prompt = [negative_prompt] * 1
-                    with torch.inference_mode():
-                        (
-                            prompt_embeds_c,
-                            _,
-                            _,
-                            _,
-                        ) = pipe.encode_prompt(
-                            prompt,
-                            num_images_per_prompt=1,
-                            do_classifier_free_guidance=False,
-                            negative_prompt=negative_prompt,
-                        )
+                prompt = "a photo of " + garment_des
+                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                if not isinstance(prompt, List):
+                    prompt = [prompt] * 1
+                if not isinstance(negative_prompt, List):
+                    negative_prompt = [negative_prompt] * 1
+                try:
+                    print("Encoding additional prompts...")
+                    prompt_embeds_c, _, _, _ = pipe.encode_prompt(
+                        prompt,
+                        num_images_per_prompt=1,
+                        do_classifier_free_guidance=False,
+                        negative_prompt=negative_prompt,
+                    )
+                    print("Additional prompts encoded successfully.")
+                except Exception as e:
+                    print(f"Error occurred while encoding additional prompts: {str(e)}")
+                    raise e
 
+                print("Preparing input data...")
+                try:
                     pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
                     garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
                     generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
+                    print("Input data prepared.")
+                except Exception as e:
+                    print(f"Error occurred while preparing input data: {str(e)}")
+                    raise e
+
+                print("Generating images...")
+                try:
                     images = pipe(
                         prompt_embeds=prompt_embeds.to(device,torch.float16),
                         negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
@@ -523,38 +637,98 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                         ip_adapter_image=garm_img.resize((768,1024)),
                         guidance_scale=2.0,
                     )[0]
+                    print("Images generated successfully.")
+                except Exception as e:
+                    print(f"Error occurred while generating images: {str(e)}")
+                    raise e
 
         if is_checked_crop:
-            out_img = images[0].resize(crop_size)
-            human_img_orig.paste(out_img, (int(left), int(top)))
+            print("Resizing and pasting output image...")
+            try:
+                out_img = images.resize(crop_size)
+                human_img_orig.paste(out_img, (int(left), int(top)))
+                print("Output image resized and pasted.")
+            except Exception as e:
+                print(f"Error occurred while resizing and pasting output image: {str(e)}")
+                raise e
 
             if blur_face:
-                face_blur(mask_gray).save(masked_img_path)
-                face_blur(human_img_orig).save(output_img_path)
+                print("Blurring faces in the masked image...")
+                try:
+                    face_blur(mask_gray).save(masked_img_path)
+                    print("Faces blurred in the masked image.")
+                except Exception as e:
+                    print(f"Error occurred while blurring faces in the masked image: {str(e)}")
+                    raise e
+                print("Blurring faces in the output image...")
+                try:
+                    face_blur(human_img_orig).save(output_img_path)
+                    print("Faces blurred in the output image.")
+                except Exception as e:
+                    print(f"Error occurred while blurring faces in the output image: {str(e)}")
+                    raise e
             else:
-                mask_gray.save(masked_img_path)
-                human_img_orig.save(output_img_path)
+                print("Saving masked image without face blurring...")
+                try:
+                    mask_gray.save(masked_img_path)
+                    print("Masked image saved without face blurring.")
+                except Exception as e:
+                    print(f"Error occurred while saving masked image without face blurring: {str(e)}")
+                    raise e
+                print("Saving output image without face blurring...")
+                try:
+                    human_img_orig.save(output_img_path)
+                    print("Output image saved without face blurring.")
+                except Exception as e:
+                    print(f"Error occurred while saving output image without face blurring: {str(e)}")
+                    raise e
 
+            print(f"Output image saved at: {output_img_path}")
             return human_img_orig, mask_gray, ""
         else:
             if blur_face:
-                face_blur(mask_gray).save(masked_img_path)
-                face_blur(images[0]).save(output_img_path)
+                print("Blurring faces in the masked image...")
+                try:
+                    face_blur(mask_gray).save(masked_img_path)
+                    print("Faces blurred in the masked image.")
+                except Exception as e:
+                    print(f"Error occurred while blurring faces in the masked image: {str(e)}")
+                    raise e
+                print("Blurring faces in the output image...")
+                try:
+                    face_blur(images[0]).save(output_img_path)
+                    print("Faces blurred in the output image.")
+                except Exception as e:
+                    print(f"Error occurred while blurring faces in the output image: {str(e)}")
+                    raise e
             else:
-                mask_gray.save(masked_img_path)
-                images[0].save(output_img_path)
+                print("Saving masked image without face blurring...")
+                try:
+                    mask_gray.save(masked_img_path)
+                    print("Masked image saved without face blurring.")
+                except Exception as e:
+                    print(f"Error occurred while saving masked image without face blurring: {str(e)}")
+                    raise e
+                print("Saving output image without face blurring...")
+                try:
+                    images[0].save(output_img_path)
+                    print("Output image saved without face blurring.")
+                except Exception as e:
+                    print(f"Error occurred while saving output image without face blurring: {str(e)}")
+                    raise e
+
+            print(f"Output image saved at: {output_img_path}")
             return images[0], mask_gray, ""
     except Exception as e:
+        print("Error occurred in start_tryon:")
+        traceback.print_exc()
         return None, None, f"An error occurred: {str(e)}"
 
-    
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
 garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
-
 human_list = os.listdir(os.path.join(example_path,"human"))
 human_list_path = [os.path.join(example_path,"human",human) for human in human_list]
-
 human_ex_list = []
 for ex_human in human_list_path:
     ex_dict = {}
@@ -569,22 +743,22 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
         return None, None, error_message
     return result_image, mask_image, ""
 
-with gr.Blocks(css=custom_css) as demo:
+with gr.Blocks() as demo:
     gr.HTML("""
-        <div class="header">
-            <h2>Arbi-TryOn</h2>
-            <p>Your Virtual Fitting Room</p>
-        </div>
+    <div class="header">
+        <h2>Arbi-TryOn</h2>
+        <p>Your Virtual Fitting Room</p>
+    </div>
     """)
     height = 550
     width = 450
     with gr.Tabs() as tabs:
         with gr.TabItem("Fashion Catalog", id=0):
             gr.HTML("""
-                <div class="header">
-                <p>Choose your favourite design and let us do the magic</p>
-                </div>
-                """)
+            <div class="header">
+                <p>Choose your favorite design and let us do the magic</p>
+            </div>
+            """)
             with gr.Row():
                 garment_gallery = gr.Gallery(
                     value=[item["image"] for item in catalog],
@@ -595,7 +769,6 @@ with gr.Blocks(css=custom_css) as demo:
                     allow_preview=False,
                     min_width=250
                 )
-
         with gr.TabItem("Virtual Try-On", id=1):
             with gr.Row():
                 with gr.Column():
@@ -623,7 +796,6 @@ with gr.Blocks(css=custom_css) as demo:
     def select_garment(evt: gr.SelectData):
         selected_garment = catalog[evt.index]
         return Image.open(selected_garment["garment_image"]), selected_garment["description"], gr.Tabs(selected=1)
-
 
     garment_gallery.select(select_garment, None, [garment_image, description, tabs])
 
