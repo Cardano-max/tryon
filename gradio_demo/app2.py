@@ -7,6 +7,7 @@ import cv2
 import uuid
 import math
 from PIL import Image
+import time
 import numpy as np
 import torch
 from src.tryon_pipeline import StableDiffusionXLInpaintPipeline as TryonPipeline
@@ -475,106 +476,110 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
 
-        print("Generating dummy pose image...")
-        pose_img = generate_dummy_pose_image(human_img)
-        print("Dummy pose image generated.")
+        print("Creating image generation task...")
+        task = worker.AsyncTask(args=[
+            True,  # Input image checkbox
+            prompt,  # Prompt for generating garment
+            modules.config.default_prompt_negative,  # Negative prompt
+            False,  # Advanced checkbox
+            modules.config.default_styles,  # Style selections
+            flags.Performance.QUALITY.value,  # Performance selection
+            f"{768}×{1024}",  # Aspect ratio selection
+            1,  # Image number
+            modules.config.default_output_format,  # Output format
+            seed,  # Random seed
+            modules.config.default_sample_sharpness,  # Sharpness
+            modules.config.default_cfg_scale,  # Guidance scale
+            modules.config.default_base_model_name,  # Base model
+            modules.config.default_refiner_model_name,  # Refiner model
+            modules.config.default_refiner_switch,  # Refiner switch
+            True,  # Current tab (set to True for inpainting)
+            "inpaint",  # Inpaint mode
+            flags.disabled,  # UOV method
+            None,  # UOV input image
+            [],  # Outpaint selections
+            {'image': human_img, 'mask': mask},  # Inpaint input image
+            prompt,  # Inpaint additional prompt
+            mask,  # Inpaint mask image
+            True,  # Disable preview
+            True,  # Disable intermediate results
+            modules.config.default_black_out_nsfw,  # Black out NSFW
+            1.5,  # Positive ADM guidance
+            0.8,  # Negative ADM guidance
+            0.3,  # ADM guidance end
+            modules.config.default_cfg_tsnr,  # CFG mimicking from TSNR
+            modules.config.default_sampler,  # Sampler name
+            modules.config.default_scheduler,  # Scheduler name
+            -1,  # Overwrite step
+            -1,  # Overwrite switch
+            768,  # Overwrite width
+            1024,  # Overwrite height
+            -1,  # Overwrite vary strength
+            modules.config.default_overwrite_upscale,  # Overwrite upscale strength
+            False,  # Mixing image prompt and vary upscale
+            True,  # Mixing image prompt and inpaint
+            False,  # Debugging CN preprocessor
+            False,  # Skipping CN preprocessor
+            100,  # Canny low threshold
+            200,  # Canny high threshold
+            flags.refiner_swap_method,  # Refiner swap method
+            0.5,  # ControlNet softness
+            False,  # FreeU enabled
+            1.0,  # FreeU b1
+            1.0,  # FreeU b2
+            1.0,  # FreeU s1
+            1.0,  # FreeU s2
+            False,  # Debugging inpaint preprocessor
+            False,  # Inpaint disable initial latent
+            modules.config.default_inpaint_engine_version,  # Inpaint engine
+            1.0,  # Inpaint strength
+            0.618,  # Inpaint respective field
+            False,  # Inpaint mask upload checkbox
+            False,  # Invert mask checkbox
+            0,  # Inpaint erode or dilate
+            modules.config.default_save_metadata_to_images,  # Save metadata to images
+            modules.config.default_metadata_scheme,  # Metadata scheme
+        ])
+        worker.async_tasks.append(task)
+        print("Image generation task created and appended successfully.")
 
-        with torch.no_grad():
-            with torch.cuda.amp.autocast():
-                prompt = "model is wearing " + garment_des
-                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                print("Encoding prompts...")
-                prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds = pipe.encode_prompt(
-                    prompt,
-                    num_images_per_prompt=1,
-                    do_classifier_free_guidance=True,
-                    negative_prompt=negative_prompt,
-                )
-                print("Prompts encoded successfully.")
+        print("Waiting for task to start processing...")
+        timeout = 60  # Set a timeout of 60 seconds
+        start_time = time.time()
+        while not task.processing:
+            if time.time() - start_time > timeout:
+                print("Task startup timed out. Proceeding without waiting.")
+                break
+            time.sleep(0.1)
 
-                prompt = "a photo of " + garment_des
-                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                if not isinstance(prompt, List):
-                    prompt = [prompt] * 1
-                if not isinstance(negative_prompt, List):
-                    negative_prompt = [negative_prompt] * 1
-                print("Encoding additional prompts...")
-                prompt_embeds_c, _, _, _ = pipe.encode_prompt(
-                    prompt,
-                    num_images_per_prompt=1,
-                    do_classifier_free_guidance=False,
-                    negative_prompt=negative_prompt,
-                )
-                print("Additional prompts encoded successfully.")
-
-                print("Preparing input data...")
-                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
-                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
-                generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
-                print("Input data prepared.")
-
-                print("Generating images...")
-                images = pipe(
-                    prompt_embeds=prompt_embeds.to(device,torch.float16),
-                    negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
-                    pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
-                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
-                    num_inference_steps=denoise_steps,
-                    generator=generator,
-                    strength=1.0,
-                    pose_img=pose_img.to(device,torch.float16),
-                    text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
-                    cloth=garm_tensor.to(device,torch.float16),
-                    mask_image=mask,
-                    image=human_img,
-                    height=1024,
-                    width=768,
-                    ip_adapter_image=garm_img.resize((768,1024)),
-                    guidance_scale=2.0,
-                )[0]
-                print("Images generated successfully.")
-
-        if is_checked_crop:
-            print("Resizing and pasting output image...")
-            out_img = images[0].resize(crop_size)
-            human_img_orig.paste(out_img, (int(left), int(top)))
-            print("Output image resized and pasted.")
-
-            if blur_face:
-                print("Blurring faces in the masked image...")
-                face_blur(mask_gray).save(masked_img_path)
-                print("Faces blurred in the masked image.")
-                print("Blurring faces in the output image...")
-                face_blur(human_img_orig).save(output_img_path)
-                print("Faces blurred in the output image.")
-            else:
-                print("Saving masked image without face blurring...")
-                mask_gray.save(masked_img_path)
-                print("Masked image saved without face blurring.")
-                print("Saving output image without face blurring...")
-                human_img_orig.save(output_img_path)
-                print("Output image saved without face blurring.")
-
-            print(f"Output image saved at: {output_img_path}")
-            return human_img_orig, mask_gray, ""
+        if task.processing:
+            print("Task started processing.")
         else:
-            if blur_face:
-                print("Blurring faces in the masked image...")
-                face_blur(mask_gray).save(masked_img_path)
-                print("Faces blurred in the masked image.")
-                print("Blurring faces in the output image...")
-                face_blur(images[0]).save(output_img_path)
-                print("Faces blurred in the output image.")
-            else:
-                print("Saving masked image without face blurring...")
-                mask_gray.save(masked_img_path)
-                print("Masked image saved without face blurring.")
-                print("Saving output image without face blurring...")
-                images[0].save(output_img_path)
-                print("Output image saved without face blurring.")
+            print("Task did not start processing within the timeout period.")
 
+        while task.processing:
+            time.sleep(0.1)
+
+        if task.results and isinstance(task.results, list) and len(task.results) > 0:
+            result_image_path = task.results[0]
+            result_image = Image.open(result_image_path)
+
+            if is_checked_crop:
+                result_image = result_image.resize(crop_size)
+                human_img_orig.paste(result_image, (int(left), int(top)))
+                result_image = human_img_orig
+
+            if blur_face:
+                result_image = face_blur(result_image)
+
+            result_image.save(output_img_path)
             print(f"Output image saved at: {output_img_path}")
-            return images[0], mask_gray, ""
+
+            return result_image, mask_gray, ""
+        else:
+            print("No results generated.")
+            return None, None, "Failed to generate the result image."
+
     except Exception as e:
         print("Error occurred in start_tryon:")
         traceback.print_exc()

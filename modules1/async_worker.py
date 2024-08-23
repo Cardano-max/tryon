@@ -30,7 +30,6 @@ def worker():
     import shared
     import random
     import copy
-    import cv2
     import modules1.default_pipeline as pipeline
     import modules1.core as core
     import modules1.flags as flags
@@ -41,20 +40,10 @@ def worker():
     import modules1.inpaint_worker as inpaint_worker
     import modules1.constants as constants
     import extras.ip_adapter as ip_adapter
-    import extras.face_crop
-    import fooocus_version
-    import args_manager
-
-    from modules1.censor import censor_batch
 
     from modules1.sdxl_styles import apply_style, apply_wildcards, fooocus_expansion
     from modules1.private_logger import log
     from extras.expansion import safe_str
-    from modules1.util import remove_empty_str, HWC3, resize_image, \
-        get_image_shape_ceil, set_image_shape_ceil, get_shape_ceil, resample_image, erode_or_dilate
-    from modules1.upscaler import perform_upscale
-    from modules1.flags import Performance, lora_count
-    from modules1.meta_parser import get_metadata_parser, MetadataScheme
 
     pid = os.getpid()
     print(f'Started worker with PID {pid}')
