@@ -621,7 +621,8 @@ with gr.Blocks(css=custom_css) as demo:
 
     def select_garment(evt: gr.SelectData):
         selected_garment = catalog[evt.index]
-        return PILImage.open(selected_garment["garment_image"]), selected_garment["description"], gr.Tabs(selected=1)
+        return Image.open(selected_garment["garment_image"]), selected_garment["description"], gr.Tabs(selected=1)
+
 
     garment_gallery.select(select_garment, None, [garment_image, description, tabs])
 
