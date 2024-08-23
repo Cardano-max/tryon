@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Dict, List
 import torch
 
 # Use these local imports
-from .detectron2.config import CfgNode, get_cfg
+from .detectron2.config import get_cfg, CfgNode
 from .detectron2.data.detection_utils import read_image
 from .detectron2.engine.defaults import DefaultPredictor
 from .detectron2.structures.instances import Instances
