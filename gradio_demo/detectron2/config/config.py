@@ -6,16 +6,7 @@ import inspect
 import logging
 from fvcore.common.config import CfgNode as _CfgNode
 
-import os
-
-class PathManager:
-    @staticmethod
-    def open(filename, mode="r"):
-        return open(filename, mode)
-    
-    @staticmethod
-    def isfile(filename):
-        return os.path.isfile(filename)
+from ..utils.file_io import PathManager
 
 class CfgNode(_CfgNode):
     """
