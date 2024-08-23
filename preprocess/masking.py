@@ -34,7 +34,7 @@ class Masking:
     def __init__(self):
         logger.info("Initializing Masking class")
         try:
-            self.parsing_model = Parsing(-1)
+            # self.parsing_model = Parsing(-1)
             self.label_map = {
                 "background": 0, "hat": 1, "hair": 2, "sunglasses": 3, "upper_clothes": 4,
                 "skirt": 5, "pants": 6, "dress": 7, "belt": 8, "left_shoe": 9, "right_shoe": 10,
