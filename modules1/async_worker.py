@@ -918,10 +918,11 @@ def worker():
                 if generate_image_grid:
                     build_image_wall(task)
                 task.yields.append(['finish', task.results])
-                pipeline.prepare_text_encoder(async_call=True)
-            except:
+                pipeline.prepare_text_encoder(async_call=False)  # Change this to False
+            except Exception as e:
+                print(f"Error in task handler: {str(e)}")
                 traceback.print_exc()
-                task.yields.append(['finish', task.results])
+                task.yields.append(['error', str(e)])
             finally:
                 if pid in modules1.patch.patch_settings:
                     del modules1.patch.patch_settings[pid]
