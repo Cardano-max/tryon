@@ -2,10 +2,29 @@ from .config import CfgNode as CN
 
 _C = CN()
 
-# Add your default configuration here
+# Model
 _C.MODEL = CN()
+_C.MODEL.WEIGHTS = ""
+_C.MODEL.DEVICE = "cuda"
+_C.MODEL.ROI_HEADS = CN()
+_C.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
+_C.MODEL.ROI_HEADS.NMS_THRESH_TEST = 0.5
 _C.MODEL.ROI_DENSEPOSE_HEAD = CN()
-# Add other configuration options as needed
+_C.MODEL.ROI_DENSEPOSE_HEAD.NAME = "DensePoseV1ConvXHead"
+_C.MODEL.ROI_DENSEPOSE_HEAD.NUM_COARSE_SEGM_CHANNELS = 2
+
+# Input
+_C.INPUT = CN()
+_C.INPUT.MIN_SIZE_TEST = 800
+_C.INPUT.MAX_SIZE_TEST = 1333
+
+# Datasets
+_C.DATASETS = CN()
+_C.DATASETS.TEST = ()
+
+# Dataloader
+_C.DATALOADER = CN()
+_C.DATALOADER.NUM_WORKERS = 2
 
 def get_cfg():
     return _C.clone()
