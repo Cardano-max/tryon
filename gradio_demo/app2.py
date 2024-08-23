@@ -1,6 +1,8 @@
 import sys
 import os
 sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
+from PIL import Image
+
 
 import gradio as gr
 import cv2
@@ -29,7 +31,6 @@ from preprocess.openpose.run_openpose import OpenPose
 from gradio_demo.detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
-from PIL import Image
 
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
