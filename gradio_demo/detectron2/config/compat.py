@@ -24,10 +24,8 @@ Instructions to bump version:
 import logging
 from typing import List, Optional, Tuple
 
+from gradio_demo.detectron2.config import CfgNode as CN
 from .defaults import _C
-def get_cfg_node():
-    from gradio_demo.detectron2.config import CfgNode
-    return CfgNode
 
 __all__ = ["upgrade_config", "downgrade_config"]
 

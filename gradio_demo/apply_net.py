@@ -12,15 +12,10 @@ import os
 import sys
 from typing import Any, ClassVar, Dict, List
 import torch
-import sys
-import logging
+from .detectron2.config import get_cfg, CfgNode
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-print("Python path:", sys.path)
-
-from gradio_demo.detectron2.config import get_cfg, CfgNode
+# Use these local imports
+from .detectron2.config import get_cfg, CfgNode
 logger.debug(f"CfgNode being used: {CfgNode}")
 from .detectron2.data.detection_utils import read_image
 from .detectron2.engine.defaults import DefaultPredictor
@@ -121,20 +116,17 @@ class InferenceAction(Action):
         return out_pose
 
     @classmethod
-    def setup_config(cls: type, config_fpath: str, model_fpath: str, args: argparse.Namespace, opts: List[str]):
-        logger.debug(f"Setting up config with path: {config_fpath}")
+    def setup_config(
+        cls: type, config_fpath: str, model_fpath: str, args: argparse.Namespace, opts: List[str]
+    ):
         cfg = get_cfg()
-        logger.debug(f"Config type after get_cfg: {type(cfg)}")
         add_densepose_config(cfg)
-        logger.debug(f"Config type after add_densepose_config: {type(cfg)}")
         cfg.merge_from_file(config_fpath)
-        logger.debug(f"Config type after merge_from_file: {type(cfg)}")
         cfg.merge_from_list(args.opts)
         if opts:
             cfg.merge_from_list(opts)
         cfg.MODEL.WEIGHTS = model_fpath
         cfg.freeze()
-        logger.debug(f"Final config type: {type(cfg)}")
         return cfg
 
     @classmethod

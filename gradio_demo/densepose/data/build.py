@@ -10,7 +10,7 @@ import torch
 from torch.utils.data.dataset import Dataset
 
 from gradio_demo.detectron2.config import CfgNode
-
+logger.debug(f"CfgNode being used: {CfgNode}")
 from detectron2.data.build import build_detection_test_loader as d2_build_detection_test_loader
 from detectron2.data.build import build_detection_train_loader as d2_build_detection_train_loader
 from detectron2.data.build import (

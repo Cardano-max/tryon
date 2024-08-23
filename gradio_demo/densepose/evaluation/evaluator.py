@@ -15,7 +15,7 @@ import torch
 from pycocotools.coco import COCO
 from tabulate import tabulate
 
-from gradio_demo.detectron2.config import CfgNode
+from detectron2.config import CfgNode
 from detectron2.data import MetadataCatalog
 from detectron2.evaluation import DatasetEvaluator
 from detectron2.structures import BoxMode
