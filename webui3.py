@@ -14,8 +14,6 @@ import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
 from preprocess.masking import Masking
-import os
-print(sys.path)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
@@ -25,7 +23,7 @@ masker = Masking()
 def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
-    
+
     print("Generating mask...")
     try:
         inpaint_mask = masker.get_mask(person_image, category=category)
@@ -35,6 +33,13 @@ def generate_mask(person_image, category="dresses"):
         raise e
     return np.array(inpaint_mask)  # Convert to numpy array
 
+def ensure_3_channels(image):
+    if len(image.shape) == 2:
+        return np.stack([image] * 3, axis=-1)
+    elif image.shape[2] == 1:
+        return np.repeat(image, 3, axis=2)
+    return image
+
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
         # Load person image
@@ -42,19 +47,15 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         try:
             person_image = Image.open(person_image_path)
             person_image = np.array(person_image)
+            person_image = ensure_3_channels(person_image)
             print("Person image loaded successfully.")
         except Exception as e:
             print(f"Error occurred while loading person image: {str(e)}")
             raise e
 
         # Generate mask
-        print("Generating mask...")
-        try:
-            inpaint_mask = generate_mask(person_image, category)
-            print("Mask generated successfully.")
-        except Exception as e:
-            print(f"Error occurred while generating mask: {str(e)}")
-            raise e
+        inpaint_mask = generate_mask(person_image, category)
+        inpaint_mask = ensure_3_channels(inpaint_mask)
 
         # Get the original dimensions of the person image
         orig_person_h, orig_person_w = person_image.shape[:2]
@@ -74,8 +75,8 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         print(f"Resizing person image and mask to: {target_width}x{target_height}")
         try:
             # Resize images while preserving aspect ratio
-            person_image = resize_image(HWC3(person_image), target_width, target_height)
-            inpaint_mask = resize_image(HWC3(inpaint_mask), target_width, target_height)
+            person_image = resize_image(person_image, target_width, target_height)
+            inpaint_mask = resize_image(inpaint_mask, target_width, target_height)
             print("Person image and mask resized successfully.")
         except Exception as e:
             print(f"Error occurred while resizing person image and mask: {str(e)}")
@@ -104,7 +105,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_refiner_model_name,  # Refiner model
                 modules1.config.default_refiner_switch,  # Refiner switch
             ]
-            
+
             # Add LoRA arguments
             for lora in modules1.config.default_loras:
                 args.extend(lora)
