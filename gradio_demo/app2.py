@@ -29,6 +29,7 @@ from gradio_demo.utils_mask import Masking
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
+from PIL import Image as PILImage
 
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
