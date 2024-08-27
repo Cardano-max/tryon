@@ -22,8 +22,6 @@ def timing(f):
 
 class Masking:
     def __init__(self):
-        self.parsing_model = Parsing(-1)
-        self.openpose_model = OpenPose(-1)
         self.mp_hands = mp.solutions.hands
         self.mp_drawing = mp.solutions.drawing_utils
         self.hands = self.mp_hands.Hands(static_image_mode=True, max_num_hands=2, min_detection_confidence=0.5)
