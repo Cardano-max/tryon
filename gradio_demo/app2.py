@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import gradio as gr
 import cv2
