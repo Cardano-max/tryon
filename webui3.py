@@ -1,13 +1,39 @@
+import sys
+import os
+import time
+import traceback
 import numpy as np
+import torch
 from PIL import Image
-from modules1.util import resize_image, HWC3
+import cv2
+from queue import Queue
+from threading import Lock, Event
+import modules1.config
+import modules1.async_worker as worker
+import modules1.constants as constants
+import modules1.flags as flags
+from modules1.util import HWC3, resize_image
+from preprocess.masking import Masking
+import os
+print(sys.path)
 
-def ensure_3_channels(image):
-    if len(image.shape) == 2:
-        return np.stack([image] * 3, axis=-1)
-    elif image.shape[2] == 1:
-        return np.repeat(image, 3, axis=2)
-    return image
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+
+# Initialize Masker
+masker = Masking()
+
+def generate_mask(person_image, category="dresses"):
+    if not isinstance(person_image, Image.Image):
+        person_image = Image.fromarray(person_image)
+    
+    print("Generating mask...")
+    try:
+        inpaint_mask = masker.get_mask(person_image, category=category)
+        print("Mask generated successfully.")
+    except Exception as e:
+        print(f"Error occurred while generating mask: {str(e)}")
+        raise e
+    return np.array(inpaint_mask)  # Convert to numpy array
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
@@ -16,7 +42,6 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         try:
             person_image = Image.open(person_image_path)
             person_image = np.array(person_image)
-            person_image = ensure_3_channels(person_image)
             print("Person image loaded successfully.")
         except Exception as e:
             print(f"Error occurred while loading person image: {str(e)}")
@@ -26,16 +51,6 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         print("Generating mask...")
         try:
             inpaint_mask = generate_mask(person_image, category)
-            print("Mask shape:", inpaint_mask.shape)
-            print("Mask dtype:", inpaint_mask.dtype)
-            
-            # Ensure mask is 2D
-            if len(inpaint_mask.shape) == 3:
-                inpaint_mask = inpaint_mask[:,:,0]
-            
-            # Convert mask to binary
-            inpaint_mask = (inpaint_mask > 127).astype(np.uint8) * 255
-            
             print("Mask generated successfully.")
         except Exception as e:
             print(f"Error occurred while generating mask: {str(e)}")
@@ -48,18 +63,19 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         person_aspect_ratio = orig_person_h / orig_person_w
 
         # Set target width and calculate corresponding height to maintain aspect ratio
-        target_width = 768
-        target_height = 1024
+        target_width = 1024
+        target_height = int(target_width * person_aspect_ratio)
+
+        # Ensure target height is also 1024 at maximum
+        if target_height > 1024:
+            target_height = 1024
+            target_width = int(target_height / person_aspect_ratio)
 
         print(f"Resizing person image and mask to: {target_width}x{target_height}")
         try:
             # Resize images while preserving aspect ratio
-            person_image = resize_image(person_image, target_width, target_height)
-            inpaint_mask = resize_image(inpaint_mask, target_width, target_height)
-            
-            # Ensure mask is 3 channel
-            inpaint_mask = ensure_3_channels(inpaint_mask)
-            
+            person_image = resize_image(HWC3(person_image), target_width, target_height)
+            inpaint_mask = resize_image(HWC3(inpaint_mask), target_width, target_height)
             print("Person image and mask resized successfully.")
         except Exception as e:
             print(f"Error occurred while resizing person image and mask: {str(e)}")
@@ -88,7 +104,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_refiner_model_name,  # Refiner model
                 modules1.config.default_refiner_switch,  # Refiner switch
             ]
-
+            
             # Add LoRA arguments
             for lora in modules1.config.default_loras:
                 args.extend(lora)
