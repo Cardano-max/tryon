@@ -2,6 +2,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import sys
+import os
+sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
+import traceback
 import gradio as gr
 import cv2
 import uuid
@@ -23,13 +27,12 @@ from typing import List
 from transformers import AutoTokenizer
 from gradio_demo.utils_mask import Masking
 from torchvision import transforms
-from gradio_demo import apply_net
-from preprocess.humanparsing.run_parsing import Parsing
-from preprocess.openpose.run_openpose import OpenPose
-from gradio_demo.detectron2.data.detection_utils import convert_PIL_to_numpy, _apply_exif_orientation
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
-from PIL import Image
+
+from preprocess.humanparsing.run_parsing import Parsing
+from preprocess.openpose.run_openpose import OpenPose
+
 
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
@@ -367,42 +370,64 @@ def is_full_body_image(image):
 
 
 def process_with_defocus(image_path):
-    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
-    category = "dresses"
-    output_path = f"temp_defocus_output_{uuid.uuid4()}.jpg"
-    
-    result = defocus_virtual_try_on(image_path, prompt, category, output_path)
-    
-    if result:
-        return Image.open(result)
-    else:
+    try:
+        prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
+        category = "dresses"
+        
+        print("Processing image with Defocus...")
+        result = defocus_virtual_try_on(image_path, prompt, category)
+        
+        if result:
+            print(f"Defocus processing completed. Result saved at: {result}")
+            return Image.open(result)
+        else:
+            print("Defocus processing failed.")
+            return None
+    except Exception as e:
+        print(f"Error occurred in process_with_defocus: {str(e)}")
+        traceback.print_exc()
         return None
+
+def generate_dummy_pose_image(human_img):
+    # Create a blank image with the same size as human_img
+    pose_img = Image.new('RGB', human_img.size, color=(0, 0, 0))
+    return pose_img
 
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
+        print("Moving models to device...")
         openpose_model.preprocessor.body_estimation.model.to(device)
         pipe.to(device)
         pipe.unet_encoder.to(device)
+        print("Models moved to device successfully.")
 
+        print("Resizing garment image...")
         garm_img = garm_img.convert("RGB").resize((768,1024))
+        print("Garment image resized successfully.")
+
+        print("Loading original image...")
         original_img = dict["background"]
         human_img_orig = original_img.convert("RGB")
+        print("Original image loaded successfully.")
 
-        # Check if the image contains a full-body pose
+        print("Checking if image contains a full-body pose...")
         if not is_full_body_image(human_img_orig):
+            print("Image does not contain a full-body pose.")
             return None, None, "Please upload a full-body image showing your entire body, including head, hands, and feet."
 
-        # Save the original image temporarily
         temp_original_path = f"temp_original_{uuid.uuid4()}.jpg"
+        print(f"Saving original image temporarily at: {temp_original_path}")
         human_img_orig.save(temp_original_path)
+        print("Original image saved temporarily.")
 
-        # Process the image with Defocus
+        print("Processing image with Defocus...")
         defocus_result = process_with_defocus(temp_original_path)
         
         if defocus_result is None:
+            print("Defocus processing failed.")
             return None, None, "Failed to process the image with Defocus."
 
-        # Use the Defocus result as the new human_img_orig
+        print("Defocus processing completed successfully.")
         human_img_orig = defocus_result
 
         unique_id = str(uuid.uuid4())
@@ -413,11 +438,16 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
 
         if blur_face:
+            print("Blurring faces in the image...")
             face_blur(human_img_orig).save(human_img_path)
+            print("Faces blurred and image saved.")
         else:
+            print("Saving image without face blurring...")
             human_img_orig.save(human_img_path)
+            print("Image saved without face blurring.")
 
         if is_checked_crop:
+            print("Cropping and resizing image...")
             width, height = human_img_orig.size
             target_width = int(min(width, height * (3 / 4)))
             target_height = int(min(height, width * (4 / 3)))
@@ -428,122 +458,132 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             cropped_img = human_img_orig.crop((left, top, right, bottom))
             crop_size = cropped_img.size
             human_img = cropped_img.resize((768,1024))
+            print("Image cropped and resized successfully.")
         else:
+            print("Resizing image without cropping...")
             human_img = human_img_orig.resize((768,1024))
+            print("Image resized without cropping.")
 
         if is_checked:
+            print("Generating mask using AI-powered auto-masking...")
             mask, mask_gray = masker.get_mask(human_img, category_dict[category])
             mask = mask.resize((768,1024))
+            print("Mask generated using AI-powered auto-masking.")
         else:
+            print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
+            print("Mask generated using user-provided layer.")
 
-        # Convert mask to numpy array if it's not already
         if isinstance(mask, Image.Image):
             mask = np.array(mask)
 
+        print("Preparing masked image...")
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
-        human_img_arg = _apply_exif_orientation(human_img.resize((384,512)))
-        human_img_arg = convert_PIL_to_numpy(human_img_arg, format="BGR")
 
-        # Create a parser for apply_net arguments
-        parser = apply_net.create_argument_parser()
-        args = parser.parse_args(['show', './configs/densepose_rcnn_R_50_FPN_s1x.yaml', './ckpt/densepose/model_final_162be9.pkl', 'dp_segm', '-v', '--opts', 'MODEL.DEVICE', 'cuda'])
-
-        # Use the ShowAction class to process the image
-        show_action = apply_net.ShowAction()
-        cfg = show_action.setup_config(args.cfg, args.model, args, args.opts)
-        context = show_action.create_context(args, cfg)
-        
-        # Create a DefaultPredictor
-        predictor = apply_net.DefaultPredictor(cfg)
-        
-        # Process the image
-        with torch.no_grad():
-            outputs = predictor(human_img_arg)["instances"]
-            pose_img = show_action.execute_on_outputs(context, {"image": human_img_arg}, outputs)
-
-        pose_img = Image.fromarray(pose_img).resize((768,1024))
+        print("Generating dummy pose image...")
+        pose_img = generate_dummy_pose_image(human_img)
+        print("Dummy pose image generated.")
 
         with torch.no_grad():
             with torch.cuda.amp.autocast():
                 prompt = "model is wearing " + garment_des
                 negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                with torch.inference_mode():
-                    (
-                        prompt_embeds,
-                        negative_prompt_embeds,
-                        pooled_prompt_embeds,
-                        negative_pooled_prompt_embeds,
-                    ) = pipe.encode_prompt(
-                        prompt,
-                        num_images_per_prompt=1,
-                        do_classifier_free_guidance=True,
-                        negative_prompt=negative_prompt,
-                    )
+                print("Encoding prompts...")
+                prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds = pipe.encode_prompt(
+                    prompt,
+                    num_images_per_prompt=1,
+                    do_classifier_free_guidance=True,
+                    negative_prompt=negative_prompt,
+                )
+                print("Prompts encoded successfully.")
 
-                    prompt = "a photo of " + garment_des
-                    negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-                    if not isinstance(prompt, List):
-                        prompt = [prompt] * 1
-                    if not isinstance(negative_prompt, List):
-                        negative_prompt = [negative_prompt] * 1
-                    with torch.inference_mode():
-                        (
-                            prompt_embeds_c,
-                            _,
-                            _,
-                            _,
-                        ) = pipe.encode_prompt(
-                            prompt,
-                            num_images_per_prompt=1,
-                            do_classifier_free_guidance=False,
-                            negative_prompt=negative_prompt,
-                        )
+                prompt = "a photo of " + garment_des
+                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                if not isinstance(prompt, List):
+                    prompt = [prompt] * 1
+                if not isinstance(negative_prompt, List):
+                    negative_prompt = [negative_prompt] * 1
+                print("Encoding additional prompts...")
+                prompt_embeds_c, _, _, _ = pipe.encode_prompt(
+                    prompt,
+                    num_images_per_prompt=1,
+                    do_classifier_free_guidance=False,
+                    negative_prompt=negative_prompt,
+                )
+                print("Additional prompts encoded successfully.")
 
-                    pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
-                    garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
-                    generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
-                    images = pipe(
-                        prompt_embeds=prompt_embeds.to(device,torch.float16),
-                        negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
-                        pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
-                        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
-                        num_inference_steps=denoise_steps,
-                        generator=generator,
-                        strength=1.0,
-                        pose_img=pose_img.to(device,torch.float16),
-                        text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
-                        cloth=garm_tensor.to(device,torch.float16),
-                        mask_image=mask,
-                        image=human_img,
-                        height=1024,
-                        width=768,
-                        ip_adapter_image=garm_img.resize((768,1024)),
-                        guidance_scale=2.0,
-                    )[0]
+                print("Preparing input data...")
+                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
+                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
+                generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
+                print("Input data prepared.")
+
+                print("Generating images...")
+                images = pipe(
+                    prompt_embeds=prompt_embeds.to(device,torch.float16),
+                    negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
+                    pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
+                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                    num_inference_steps=denoise_steps,
+                    generator=generator,
+                    strength=1.0,
+                    pose_img=pose_img.to(device,torch.float16),
+                    text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
+                    cloth=garm_tensor.to(device,torch.float16),
+                    mask_image=mask,
+                    image=human_img,
+                    height=1024,
+                    width=768,
+                    ip_adapter_image=garm_img.resize((768,1024)),
+                    guidance_scale=2.0,
+                )[0]
+                print("Images generated successfully.")
 
         if is_checked_crop:
+            print("Resizing and pasting output image...")
             out_img = images[0].resize(crop_size)
             human_img_orig.paste(out_img, (int(left), int(top)))
+            print("Output image resized and pasted.")
 
             if blur_face:
+                print("Blurring faces in the masked image...")
                 face_blur(mask_gray).save(masked_img_path)
+                print("Faces blurred in the masked image.")
+                print("Blurring faces in the output image...")
                 face_blur(human_img_orig).save(output_img_path)
+                print("Faces blurred in the output image.")
             else:
+                print("Saving masked image without face blurring...")
                 mask_gray.save(masked_img_path)
+                print("Masked image saved without face blurring.")
+                print("Saving output image without face blurring...")
                 human_img_orig.save(output_img_path)
+                print("Output image saved without face blurring.")
 
+            print(f"Output image saved at: {output_img_path}")
             return human_img_orig, mask_gray, ""
         else:
             if blur_face:
+                print("Blurring faces in the masked image...")
                 face_blur(mask_gray).save(masked_img_path)
+                print("Faces blurred in the masked image.")
+                print("Blurring faces in the output image...")
                 face_blur(images[0]).save(output_img_path)
+                print("Faces blurred in the output image.")
             else:
+                print("Saving masked image without face blurring...")
                 mask_gray.save(masked_img_path)
+                print("Masked image saved without face blurring.")
+                print("Saving output image without face blurring...")
                 images[0].save(output_img_path)
+                print("Output image saved without face blurring.")
+
+            print(f"Output image saved at: {output_img_path}")
             return images[0], mask_gray, ""
     except Exception as e:
+        print("Error occurred in start_tryon:")
+        traceback.print_exc()
         return None, None, f"An error occurred: {str(e)}"
 
     
