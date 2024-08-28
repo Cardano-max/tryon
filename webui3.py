@@ -25,7 +25,7 @@ masker = Masking()
 def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
-    
+
     print("Generating mask...")
     try:
         inpaint_mask = masker.get_mask(person_image, category=category)
@@ -104,7 +104,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_refiner_model_name,  # Refiner model
                 modules1.config.default_refiner_switch,  # Refiner switch
             ]
-            
+
             # Add LoRA arguments
             for lora in modules1.config.default_loras:
                 args.extend(lora)
@@ -219,13 +219,12 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         traceback.print_exc()
         return None
 
-# Example usage (commented out)
 # if __name__ == "__main__":
 #     input_image_path = "/path/to/input/image.jpg"
 #     output_image_path = "/path/to/output/image.jpg"
 #     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
 #     category = "dresses"  # or "lower_body" or "full_body"
-#
+
 #     result = virtual_try_on(input_image_path, prompt, category, output_image_path)
 #     if result:
 #         print(f"Virtual try-on completed successfully. Result saved at: {result}")
