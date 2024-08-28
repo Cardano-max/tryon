@@ -29,6 +29,10 @@ import mediapipe as mp
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
 
+
+from preprocess.humanparsing.run_parsing import Parsing
+from preprocess.openpose.run_openpose import OpenPose
+
 # Import necessary functions from modules1.util
 from modules1.util import HWC3, resize_image
 
