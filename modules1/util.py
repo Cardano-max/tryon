@@ -120,14 +120,18 @@ def set_image_shape_ceil(im, shape_ceil):
 
 
 def HWC3(x):
-    assert x.dtype == np.uint8
     if x.ndim == 2:
         x = x[:, :, None]
-    assert x.ndim == 3
+    if x.ndim != 3:
+        print(f"Unexpected number of dimensions: {x.ndim}")
+        return None
     H, W, C = x.shape
-    assert C == 1 or C == 3 or C == 4
-    if C == 3:
-        return x
+    if C not in [1, 3, 4]:
+        print(f"Unexpected number of channels: {C}")
+        if C > 4:
+            x = x[:, :, :3]  # Take first 3 channels
+        else:
+            x = np.concatenate([x, x, x], axis=2)[:, :, :3]  # Replicate to 3 channels
     if C == 1:
         return np.concatenate([x, x, x], axis=2)
     if C == 4:
@@ -136,6 +140,7 @@ def HWC3(x):
         y = color * alpha + 255.0 * (1.0 - alpha)
         y = y.clip(0, 255).astype(np.uint8)
         return y
+    return x
 
 
 def remove_empty_str(items, default=None):

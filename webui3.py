@@ -59,37 +59,15 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         # Get the original dimensions of the person image
         orig_person_h, orig_person_w = person_image.shape[:2]
 
-        # Calculate the aspect ratio of the person image
-        person_aspect_ratio = orig_person_h / orig_person_w
-
-        # Set target width and calculate corresponding height to maintain aspect ratio
-        target_width = 1024
-        target_height = int(target_width * person_aspect_ratio)
-
-        # Ensure target height is also 1024 at maximum
-        if target_height > 1024:
-            target_height = 1024
-            target_width = int(target_height / person_aspect_ratio)
-
-        print(f"Resizing person image and mask to: {target_width}x{target_height}")
-        try:
-            # Resize images while preserving aspect ratio
-            person_image = resize_image(HWC3(person_image), target_width, target_height)
-            inpaint_mask = resize_image(HWC3(inpaint_mask), target_width, target_height)
-            print("Person image and mask resized successfully.")
-        except Exception as e:
-            print(f"Error occurred while resizing person image and mask: {str(e)}")
-            raise e
-
         # Set the aspect ratio for the model
-        aspect_ratio = f"{target_width}×{target_height}"
+        aspect_ratio = f"{orig_person_w}×{orig_person_h}"
 
         print("Preparing arguments for image generation task...")
         try:
             # Prepare arguments for the image generation task
             args = [
                 True,  # Input image checkbox
-                "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy",  # Prompt for generating garment
+                prompt,  # Prompt for generating garment
                 modules1.config.default_prompt_negative,  # Negative prompt
                 False,  # Advanced checkbox
                 modules1.config.default_styles,  # Style selections
@@ -104,7 +82,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_refiner_model_name,  # Refiner model
                 modules1.config.default_refiner_switch,  # Refiner switch
             ]
-
+            
             # Add LoRA arguments
             for lora in modules1.config.default_loras:
                 args.extend(lora)
@@ -116,7 +94,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 None,  # UOV input image
                 [],  # Outpaint selections
                 {'image': person_image, 'mask': inpaint_mask},  # Inpaint input image
-                "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy",  # Inpaint additional prompt
+                prompt,  # Inpaint additional prompt
                 inpaint_mask,  # Inpaint mask image
                 True,  # Disable preview
                 True,  # Disable intermediate results
@@ -129,8 +107,8 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_scheduler,  # Scheduler name
                 -1,  # Overwrite step
                 -1,  # Overwrite switch
-                target_width,  # Overwrite width
-                target_height,  # Overwrite height
+                orig_person_w,  # Overwrite width
+                orig_person_h,  # Overwrite height
                 -1,  # Overwrite vary strength
                 modules1.config.default_overwrite_upscale,  # Overwrite upscale strength
                 False,  # Mixing image prompt and vary upscale
