@@ -9,7 +9,8 @@ def timing(f):
         ts = time()
         result = f(*args, **kw)
         te = time()
-        print('func:%r took: %2.4f sec' % (f.__name__, te-ts))
+        print('func:%r args:[%r, %r] took: %2.4f sec' % \
+          (f.__name__, args, kw, te-ts))
         return result
     return wrap
 
@@ -28,12 +29,15 @@ def create_hand_mask(image, hands):
     return hand_mask > 0
 
 def refine_mask(mask):
+    # Convert to uint8 for OpenCV operations
     mask_uint8 = mask.astype(np.uint8) * 255
     
+    # Apply morphological operations to smooth the mask
     kernel = np.ones((5,5), np.uint8)
     mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
     mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
     
+    # Find contours and keep only the largest one
     contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
@@ -42,13 +46,13 @@ def refine_mask(mask):
     else:
         mask_refined = mask_uint8
     
-    return mask_refined > 0
+    return mask_refined > 0  # Convert back to boolean mask
 
 def extend_arm_mask(wrist, elbow, scale):
     return elbow + scale * (wrist - elbow)
 
 def hole_fill(img):
-    img = np.pad(img[1:-1, 1:-1], pad_width = 1, mode = 'constant', constant_values=0)
+    img = np.pad(img[1:-1, 1:-1], pad_width=1, mode='constant', constant_values=0)
     img_copy = img.copy()
     mask = np.zeros((img.shape[0] + 2, img.shape[1] + 2), dtype=np.uint8)
 

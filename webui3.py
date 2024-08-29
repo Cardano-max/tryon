@@ -13,27 +13,30 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from preprocess.masking import Masking
 import os
 print(sys.path)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
-# Initialize Masker
-masker = Masking(model_type='hd')  # or 'dc' based on your preference
+from preprocess.masking import Masking
 
+# Initialize the Masking class
+masking = Masking()
+
+# Use it in your code
 def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
 
     print("Generating mask...")
     try:
-        inpaint_mask = masker.get_mask(person_image, category=category)
+        inpaint_mask = masking.get_mask(person_image, category=category)
         print("Mask generated successfully.")
     except Exception as e:
         print(f"Error occurred while generating mask: {str(e)}")
         raise e
     return np.array(inpaint_mask)  # Convert to numpy array
+
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
