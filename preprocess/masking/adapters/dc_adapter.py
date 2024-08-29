@@ -6,4 +6,4 @@ class DCMaskAdapter(BaseMaskAdapter):
         self.mask_generator = MaskGenerator()
 
     def generate_mask(self, img, category):
-        return self.mask_generator.generate_mask(img, category)
+        return self.mask_generator.generate_mask(img, category, model_type='dc')

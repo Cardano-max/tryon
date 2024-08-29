@@ -4,7 +4,7 @@ from PIL import Image
 import mediapipe as mp
 from ..humanparsing.run_parsing import Parsing
 from ..openpose.run_openpose import OpenPose
-from .utils import timing, refine_mask, create_hand_mask
+from .utils import timing, refine_mask, create_hand_mask, extend_arm_mask, hole_fill
 
 class MaskGenerator:
     def __init__(self):
@@ -20,20 +20,16 @@ class MaskGenerator:
         }
 
     @timing
-    def generate_mask(self, img, category='upper_body'):
-        # Resize image to 384x512 for processing
+    def generate_mask(self, img, category='upper_body', model_type='hd'):
         img_resized = img.resize((384, 512), Image.LANCZOS)
         img_np = np.array(img_resized)
         
-        # Get human parsing result
         parse_result, _ = self.parsing_model(img_resized)
         parse_array = np.array(parse_result)
 
-        # Get pose estimation
         keypoints = self.openpose_model(img_resized)
         pose_data = np.array(keypoints["pose_keypoints_2d"]).reshape((-1, 2))
 
-        # Create initial mask based on category
         if category == 'upper_body':
             mask = np.isin(parse_array, [self.label_map["upper_clothes"], self.label_map["dress"]])
         elif category == 'lower_body':
@@ -44,22 +40,16 @@ class MaskGenerator:
         else:
             raise ValueError("Invalid category. Choose 'upper_body', 'lower_body', or 'dresses'.")
 
-        # Create arm mask
         arm_mask = np.isin(parse_array, [self.label_map["left_arm"], self.label_map["right_arm"]])
-
-        # Create hand mask using MediaPipe
         hand_mask = create_hand_mask(img_np, self.hands)
-
-        # Combine arm and hand mask
         arm_hand_mask = np.logical_or(arm_mask, hand_mask)
-
-        # Remove arms and hands from the mask
         mask = np.logical_and(mask, np.logical_not(arm_hand_mask))
 
-        # Refine the mask
-        mask = refine_mask(mask)
+        if model_type == 'hd':
+            mask = refine_mask(mask)
+        else:
+            mask = hole_fill(mask.astype(np.uint8) * 255)
 
-        # Resize mask back to original image size
         mask_pil = Image.fromarray(mask.astype(np.uint8) * 255)
         mask_pil = mask_pil.resize(img.size, Image.LANCZOS)
         

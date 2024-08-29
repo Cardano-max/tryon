@@ -1,5 +1,4 @@
-from .adapters.hd_adapter import HDMaskAdapter
-from .adapters.dc_adapter import DCMaskAdapter
+from .adapters import HDMaskAdapter, DCMaskAdapter
 
 class MaskFactory:
     @staticmethod
@@ -9,4 +8,4 @@ class MaskFactory:
         elif model_type == 'dc':
             return DCMaskAdapter()
         else:
-            raise ValueError("Invalid model type")
+            raise ValueError("Invalid model type. Choose 'hd' or 'dc'.")

@@ -13,29 +13,27 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from preprocess.masking import MaskFactory
+from preprocess.masking import Masking
 import os
 print(sys.path)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 # Initialize Masker
-mask_factory = MaskFactory()
-masker = mask_factory.get_mask_adapter('hd')  # or 'dc' based on your preference
+masker = Masking(model_type='hd')  # or 'dc' based on your preference
 
-    generate_mask(person_image, category="dresses"):
+def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
 
     print("Generating mask...")
     try:
-        inpaint_mask = masker.generate_mask(person_image, category=category)
+        inpaint_mask = masker.get_mask(person_image, category=category)
         print("Mask generated successfully.")
     except Exception as e:
         print(f"Error occurred while generating mask: {str(e)}")
         raise e
     return np.array(inpaint_mask)  # Convert to numpy array
-
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
@@ -61,8 +59,30 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         # Get the original dimensions of the person image
         orig_person_h, orig_person_w = person_image.shape[:2]
 
+        # Calculate the aspect ratio of the person image
+        person_aspect_ratio = orig_person_h / orig_person_w
+
+        # Set target width and calculate corresponding height to maintain aspect ratio
+        target_width = 1024
+        target_height = int(target_width * person_aspect_ratio)
+
+        # Ensure target height is also 1024 at maximum
+        if target_height > 1024:
+            target_height = 1024
+            target_width = int(target_height / person_aspect_ratio)
+
+        print(f"Resizing person image and mask to: {target_width}x{target_height}")
+        try:
+            # Resize images while preserving aspect ratio
+            person_image = resize_image(HWC3(person_image), target_width, target_height)
+            inpaint_mask = resize_image(HWC3(inpaint_mask), target_width, target_height)
+            print("Person image and mask resized successfully.")
+        except Exception as e:
+            print(f"Error occurred while resizing person image and mask: {str(e)}")
+            raise e
+
         # Set the aspect ratio for the model
-        aspect_ratio = f"{orig_person_w}×{orig_person_h}"
+        aspect_ratio = f"{target_width}×{target_height}"
 
         print("Preparing arguments for image generation task...")
         try:
@@ -84,7 +104,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_refiner_model_name,  # Refiner model
                 modules1.config.default_refiner_switch,  # Refiner switch
             ]
-            
+
             # Add LoRA arguments
             for lora in modules1.config.default_loras:
                 args.extend(lora)
