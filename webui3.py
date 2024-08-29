@@ -13,27 +13,29 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from preprocess.masking import Masking
+from preprocess.masking import MaskFactory
 import os
 print(sys.path)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 # Initialize Masker
-masker = Masking()
+mask_factory = MaskFactory()
+masker = mask_factory.get_mask_adapter('hd')  # or 'dc' based on your preference
 
-def generate_mask(person_image, category="dresses"):
+    generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
 
     print("Generating mask...")
     try:
-        inpaint_mask = masker.get_mask(person_image, category=category)
+        inpaint_mask = masker.generate_mask(person_image, category=category)
         print("Mask generated successfully.")
     except Exception as e:
         print(f"Error occurred while generating mask: {str(e)}")
         raise e
     return np.array(inpaint_mask)  # Convert to numpy array
+
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
@@ -197,14 +199,15 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         traceback.print_exc()
         return None
 
-# if __name__ == "__main__":
-#     input_image_path = "/path/to/input/image.jpg"
-#     output_image_path = "/path/to/output/image.jpg"
-#     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
-#     category = "dresses"  # or "lower_body" or "full_body"
+# Example usage
+if __name__ == "__main__":
+    input_image_path = "path/to/input/image.jpg"
+    output_image_path = "path/to/output/image.jpg"
+    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
+    category = "dresses"  # or "lower_body" or "upper_body"
 
-#     result = virtual_try_on(input_image_path, prompt, category, output_image_path)
-#     if result:
-#         print(f"Virtual try-on completed successfully. Result saved at: {result}")
-#     else:
-#         print("Virtual try-on failed.")
+    result = virtual_try_on(input_image_path, prompt, category, output_image_path)
+    if result:
+        print(f"Virtual try-on completed successfully. Result saved at: {result}")
+    else:
+        print("Virtual try-on failed.")

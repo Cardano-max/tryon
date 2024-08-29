@@ -1,40 +1,62 @@
 import numpy as np
 import cv2
+from functools import wraps
+from time import time
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        print('func:%r args:[%r, %r] took: %2.4f sec' % \
+          (f.__name__, args, kw, te-ts))
+        return result
+    return wrap
+
+def create_hand_mask(image, hands):
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    results = hands.process(image_rgb)
+    
+    hand_mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            for landmark in hand_landmarks.landmark:
+                x, y = int(landmark.x * image.shape[1]), int(landmark.y * image.shape[0])
+                cv2.circle(hand_mask, (x, y), 15, 255, -1)
+    
+    return hand_mask > 0
+
+def refine_mask(mask):
+    # Convert to uint8 for OpenCV operations
+    mask_uint8 = mask.astype(np.uint8) * 255
+    
+    # Apply morphological operations to smooth the mask
+    kernel = np.ones((5,5), np.uint8)
+    mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
+    mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
+    
+    # Find contours and keep only the largest one
+    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        mask_refined = np.zeros_like(mask_uint8)
+        cv2.drawContours(mask_refined, [largest_contour], 0, 255, -1)
+    else:
+        mask_refined = mask_uint8
+    
+    return mask_refined > 0  # Convert back to boolean mask
 
 def extend_arm_mask(wrist, elbow, scale):
     return elbow + scale * (wrist - elbow)
 
 def hole_fill(img):
+    img = np.pad(img[1:-1, 1:-1], pad_width = 1, mode = 'constant', constant_values=0)
     img_copy = img.copy()
     mask = np.zeros((img.shape[0] + 2, img.shape[1] + 2), dtype=np.uint8)
+
     cv2.floodFill(img, mask, (0, 0), 255)
     img_inverse = cv2.bitwise_not(img)
     dst = cv2.bitwise_or(img_copy, img_inverse)
     return dst
-
-def refine_mask(mask):
-    contours, hierarchy = cv2.findContours(mask.astype(np.uint8),
-                                           cv2.RETR_CCOMP, cv2.CHAIN_APPROX_TC89_L1)
-    area = []
-    for j in range(len(contours)):
-        a_d = cv2.contourArea(contours[j], True)
-        area.append(abs(a_d))
-    refine_mask = np.zeros_like(mask).astype(np.uint8)
-    if len(area) != 0:
-        i = area.index(max(area))
-        cv2.drawContours(refine_mask, contours, i, color=255, thickness=-1)
-        for j in range(len(area)):
-            if j != i and area[i] > 2000:
-                cv2.drawContours(refine_mask, contours, j, color=255, thickness=-1)
-    return refine_mask
-
-def refine_hole(parsing_result_filled, parsing_result, arm_mask):
-    filled_hole = cv2.bitwise_and(np.where(parsing_result_filled == 4, 255, 0),
-                                  np.where(parsing_result != 4, 255, 0)) - arm_mask * 255
-    contours, hierarchy = cv2.findContours(filled_hole, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_TC89_L1)
-    refine_hole_mask = np.zeros_like(parsing_result).astype(np.uint8)
-    for i in range(len(contours)):
-        a = cv2.contourArea(contours[i], True)
-        if abs(a) > 2000:
-            cv2.drawContours(refine_hole_mask, contours, i, color=255, thickness=-1)
-    return refine_hole_mask + arm_mask
