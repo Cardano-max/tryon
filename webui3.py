@@ -201,8 +201,8 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
 
 # Example usage
 if __name__ == "__main__":
-    input_image_path = "path/to/input/image.jpg"
-    output_image_path = "path/to/output/image.jpg"
+    input_image_path = "tryon/in_im/dc85c19de00a340b6bdd94c99bfd623b.jpg"
+    output_image_path = "tryon/in_im/image.jpg"
     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
     category = "dresses"  # or "lower_body" or "upper_body"
 
