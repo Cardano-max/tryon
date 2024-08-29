@@ -21,7 +21,7 @@ print(sys.path)
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 # Initialize Masker
-masker = Masking(model_type='hd')  # or 'dc' based on your preference
+masker = Masking()  # or 'dc' based on your preference
 
 def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
