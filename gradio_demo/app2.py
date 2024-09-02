@@ -334,7 +334,7 @@ pipe = TryonPipeline.from_pretrained(
         tokenizer_2=tokenizer_two,
         scheduler=noise_scheduler,
         image_encoder=image_encoder,
-        torch_dtype=torch.float32,
+        torch_dtype=torch.float16,
 )
 pipe.unet_encoder = UNet_Encoder
 

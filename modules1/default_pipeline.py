@@ -203,16 +203,19 @@ def clear_all_caches():
 
 @torch.no_grad()
 @torch.inference_mode()
-def prepare_text_encoder(async_call=False):
+def prepare_text_encoder(async_call=True):
+    if async_call:
+        # TODO: make sure that this is always called in an async way so that users cannot feel it.
+        pass
     assert_model_integrity()
-    if final_clip is not None and final_expansion is not None:
-        ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
+    ldm_patched.modules.model_management.load_models_gpu([final_clip.patcher, final_expansion.patcher])
     return
 
 
 @torch.no_grad()
 @torch.inference_mode()
-def refresh_everything(refiner_model_name, base_model_name, loras, base_model_additional_loras=None, use_synthetic_refiner=False):
+def refresh_everything(refiner_model_name, base_model_name, loras,
+                       base_model_additional_loras=None, use_synthetic_refiner=False):
     global final_unet, final_clip, final_vae, final_refiner_unet, final_refiner_vae, final_expansion
 
     final_unet = None
@@ -242,7 +245,7 @@ def refresh_everything(refiner_model_name, base_model_name, loras, base_model_ad
     if final_expansion is None:
         final_expansion = FooocusExpansion()
 
-    prepare_text_encoder(async_call=False)  # Changed to synchronous call
+    prepare_text_encoder(async_call=True)
     clear_all_caches()
     return
 
