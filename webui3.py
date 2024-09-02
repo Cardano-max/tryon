@@ -161,6 +161,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         except Exception as e:
             print(f"Error occurred while preparing arguments for image generation task: {str(e)}")
             raise e
+        
+        # Add this line to force float32 precision
+        args.append(("precision", "full"))
 
         print("Creating image generation task...")
         try:
