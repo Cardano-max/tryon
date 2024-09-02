@@ -25,6 +25,8 @@ from gradio_demo.utils_mask import Masking
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
+from PIL import Image as PILImage
+
 
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
