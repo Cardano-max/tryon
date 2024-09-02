@@ -273,14 +273,14 @@ tokenizer_one = AutoTokenizer.from_pretrained(
     subfolder="tokenizer",
     revision=None,
     use_fast=False,
-).to(device)
+)
 tokenizer_two = AutoTokenizer.from_pretrained(
     base_path,
     subfolder="tokenizer_2",
     revision=None,
     use_fast=False,
-).to(device)
-noise_scheduler = DDPMScheduler.from_pretrained(base_path, subfolder="scheduler").to(device)
+)
+noise_scheduler = DDPMScheduler.from_pretrained(base_path, subfolder="scheduler")
 
 text_encoder_one = CLIPTextModel.from_pretrained(
     base_path,
@@ -296,7 +296,7 @@ image_encoder = CLIPVisionModelWithProjection.from_pretrained(
     base_path,
     subfolder="image_encoder",
     torch_dtype=torch.float16,
-).to(device)
+)
 vae = AutoencoderKL.from_pretrained(base_path,
                                     subfolder="vae",
                                     torch_dtype=torch.float16,
@@ -320,16 +320,6 @@ unet.requires_grad_(False)
 text_encoder_one.requires_grad_(False)
 text_encoder_two.requires_grad_(False)
 
-# Ensure all models are in eval mode
-unet.eval()
-tokenizer_one.eval()
-tokenizer_two.eval()
-noise_scheduler.eval()
-text_encoder_one.eval()
-text_encoder_two.eval()
-image_encoder.eval()
-vae.eval()
-UNet_Encoder.eval()
 
 tensor_transfrom = transforms.Compose(
             [
@@ -338,20 +328,27 @@ tensor_transfrom = transforms.Compose(
             ]
     )
 
+# Modify the pipeline initialization
 pipe = TryonPipeline.from_pretrained(
-        base_path,
-        unet=unet,
-        vae=vae,
-        feature_extractor=CLIPImageProcessor(),
-        text_encoder=text_encoder_one,
-        text_encoder_2=text_encoder_two,
-        tokenizer=tokenizer_one,
-        tokenizer_2=tokenizer_two,
-        scheduler=noise_scheduler,
-        image_encoder=image_encoder,
-        torch_dtype=torch.float16,
+    base_path,
+    unet=unet,
+    vae=vae,
+    text_encoder=text_encoder_one,
+    text_encoder_2=text_encoder_two,
+    tokenizer=tokenizer_one,
+    tokenizer_2=tokenizer_two,
+    scheduler=noise_scheduler,
+    torch_dtype=torch.float16,
 ).to(device)
-pipe.unet_encoder = UNet_Encoder.to(device)
+pipe.unet_encoder = UNet_Encoder
+
+# Ensure all models are in eval mode
+unet.eval()
+text_encoder_one.eval()
+text_encoder_two.eval()
+vae.eval()
+UNet_Encoder.eval()
+pipe.eval()
 
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
