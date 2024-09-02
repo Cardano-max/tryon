@@ -91,7 +91,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 True,  # Input image checkbox
                 "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy",  # Prompt for generating garment
                 modules1.config.default_prompt_negative,  # Negative prompt
-                False,  # Advanced checkbox
+                True,  # Advanced checkbox
                 modules1.config.default_styles,  # Style selections
                 flags.Performance.QUALITY.value,  # Performance selection
                 aspect_ratio,  # Aspect ratio selection
@@ -110,7 +110,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 args.extend(lora)
 
             args.extend([
-                False,  # Current tab (set to True for inpainting)
+                True,  # Current tab (set to True for inpainting)
                 "inpaint",  # Inpaint mode
                 flags.disabled,  # UOV method
                 None,  # UOV input image
@@ -134,9 +134,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 -1,  # Overwrite vary strength
                 modules1.config.default_overwrite_upscale,  # Overwrite upscale strength
                 False,  # Mixing image prompt and vary upscale
-                False,  # Mixing image prompt and inpaint
-                True,  # Debugging CN preprocessor
-                True,  # Skipping CN preprocessor
+                True,  # Mixing image prompt and inpaint
+                False,  # Debugging CN preprocessor
+                False,  # Skipping CN preprocessor
                 100,  # Canny low threshold
                 200,  # Canny high threshold
                 flags.refiner_swap_method,  # Refiner swap method
@@ -147,11 +147,11 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 1.0,  # FreeU s1
                 1.0,  # FreeU s2
                 False,  # Debugging inpaint preprocessor
-                False,  # Inpaint disable initial latent
+                True,  # Inpaint disable initial latent
                 modules1.config.default_inpaint_engine_version,  # Inpaint engine
                 1.0,  # Inpaint strength
                 0.618,  # Inpaint respective field
-                False,  # Inpaint mask upload checkbox
+                True,  # Inpaint mask upload checkbox
                 False,  # Invert mask checkbox
                 0,  # Inpaint erode or dilate
                 modules1.config.default_save_metadata_to_images,  # Save metadata to images
