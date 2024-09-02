@@ -1,3 +1,4 @@
+#/Users/ateeb.taseer/tryon2/arbi-tryon/preprocess/humanparsing/parsing_api.py
 import pdb
 from pathlib import Path
 import sys

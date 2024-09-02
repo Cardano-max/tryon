@@ -15,18 +15,17 @@ import modules1.flags as flags
 from modules1.util import HWC3, resize_image
 from preprocess.masking import Masking
 import os
-
 print(sys.path)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
 
 # Initialize Masker
-masker = Masking()  # or 'dc' based on your preference
+masker = Masking()
 
 def generate_mask(person_image, category="dresses"):
     if not isinstance(person_image, Image.Image):
         person_image = Image.fromarray(person_image)
-
+    
     print("Generating mask...")
     try:
         inpaint_mask = masker.get_mask(person_image, category=category)
@@ -90,7 +89,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
             # Prepare arguments for the image generation task
             args = [
                 True,  # Input image checkbox
-                prompt,  # Prompt for generating garment
+                "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy",  # Prompt for generating garment
                 modules1.config.default_prompt_negative,  # Negative prompt
                 False,  # Advanced checkbox
                 modules1.config.default_styles,  # Style selections
@@ -105,7 +104,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 modules1.config.default_refiner_model_name,  # Refiner model
                 modules1.config.default_refiner_switch,  # Refiner switch
             ]
-
+            
             # Add LoRA arguments
             for lora in modules1.config.default_loras:
                 args.extend(lora)
@@ -117,7 +116,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
                 None,  # UOV input image
                 [],  # Outpaint selections
                 {'image': person_image, 'mask': inpaint_mask},  # Inpaint input image
-                prompt,  # Inpaint additional prompt
+                "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy",  # Inpaint additional prompt
                 inpaint_mask,  # Inpaint mask image
                 True,  # Disable preview
                 True,  # Disable intermediate results
@@ -220,9 +219,11 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         traceback.print_exc()
         return None
 
+
+
 if __name__ == "__main__":
     input_image_path = "test.jpeg"
-    output_image_path = "result.jpg"
+    output_image_path = "result1.jpg"
     prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
     category = "dresses"  # or "lower_body" or "upper_body"
 
