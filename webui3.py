@@ -37,43 +37,31 @@ def generate_mask(person_image, category="dresses"):
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
-        # Load person image
         print(f"Loading person image from: {person_image_path}")
         person_image = Image.open(person_image_path)
         person_image = np.array(person_image)
         print("Person image loaded successfully.")
 
-        # Generate mask
         print("Generating mask...")
         inpaint_mask = generate_mask(person_image, category)
         print("Mask generated successfully.")
 
-        # Get the original dimensions of the person image
         orig_person_h, orig_person_w = person_image.shape[:2]
-
-        # Calculate the aspect ratio of the person image
         person_aspect_ratio = orig_person_h / orig_person_w
-
-        # Set target width and calculate corresponding height to maintain aspect ratio
         target_width = 1024
         target_height = int(target_width * person_aspect_ratio)
-
-        # Ensure target height is also 1024 at maximum
         if target_height > 1024:
             target_height = 1024
             target_width = int(target_height / person_aspect_ratio)
 
         print(f"Resizing person image and mask to: {target_width}x{target_height}")
-        # Resize images while preserving aspect ratio
         person_image = resize_image(HWC3(person_image), target_width, target_height)
         inpaint_mask = resize_image(HWC3(inpaint_mask), target_width, target_height)
         print("Person image and mask resized successfully.")
 
-        # Set the aspect ratio for the model
         aspect_ratio = f"{target_width}×{target_height}"
 
         print("Preparing arguments for image generation task...")
-        # Prepare arguments for the image generation task
         args = [
             True,  # Input image checkbox
             prompt,  # Prompt for generating garment
@@ -92,7 +80,6 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
             modules1.config.default_refiner_switch,  # Refiner switch
         ]
         
-        # Add LoRA arguments
         for lora in modules1.config.default_loras:
             args.extend(lora)
 
@@ -147,30 +134,26 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         print("Arguments prepared successfully.")
 
         print("Creating image generation task...")
-        # Create and append the image generation task
         task = worker.AsyncTask(args=args)
         worker.async_tasks.append(task)
         print("Image generation task created and appended successfully.")
 
         print("Waiting for task to start processing...")
-        # Wait for the task to start and finish processing
-        max_wait_time = 300  # 5 minutes
         start_time = time.time()
         while not task.processing:
-            if time.time() - start_time > max_wait_time:
-                raise TimeoutError("Task did not start processing within the allocated time.")
+            if time.time() - start_time > 300:  # 5 minutes timeout
+                raise TimeoutError("Task did not start processing within 5 minutes.")
             time.sleep(0.1)
         print("Task started processing.")
 
         print("Waiting for task to finish processing...")
         while task.processing:
-            if time.time() - start_time > max_wait_time:
-                raise TimeoutError("Task did not finish processing within the allocated time.")
+            if time.time() - start_time > 600:  # 10 minutes timeout
+                raise TimeoutError("Task did not finish processing within 10 minutes.")
             time.sleep(0.1)
         print("Task finished processing.")
 
         print("Checking if results were generated successfully...")
-        # Check if results were generated successfully
         if task.results and isinstance(task.results, list) and len(task.results) > 0:
             result_path = task.results[0]
             if output_path:
@@ -187,7 +170,6 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         print(f"Error occurred in virtual_try_on: {str(e)}")
         traceback.print_exc()
         return None
-
 
 
 if __name__ == "__main__":
