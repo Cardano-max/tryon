@@ -1,6 +1,10 @@
+
 import sys
 import os
-sys.path.append('/Users/ateeb.taseer/tryon2/arbi-tryon')
+
+# Add the absolute path to the /tryon directory
+sys.path.append('/tryon')
+
 import traceback
 import gradio as gr
 import cv2
