@@ -258,15 +258,12 @@ def face_blur(pil_image):
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
 
 unet = UNet2DConditionModel.from_pretrained(
     base_path,
     subfolder="unet",
     torch_dtype=torch.float16,
-).to(device)
+)
 unet.requires_grad_(False)
 tokenizer_one = AutoTokenizer.from_pretrained(
     base_path,
@@ -286,27 +283,27 @@ text_encoder_one = CLIPTextModel.from_pretrained(
     base_path,
     subfolder="text_encoder",
     torch_dtype=torch.float16,
-).to(device)
+)
 text_encoder_two = CLIPTextModelWithProjection.from_pretrained(
     base_path,
     subfolder="text_encoder_2",
     torch_dtype=torch.float16,
-).to(device)
+)
 image_encoder = CLIPVisionModelWithProjection.from_pretrained(
     base_path,
     subfolder="image_encoder",
     torch_dtype=torch.float16,
-)
+    )
 vae = AutoencoderKL.from_pretrained(base_path,
                                     subfolder="vae",
                                     torch_dtype=torch.float16,
-).to(device)
+)
 
 UNet_Encoder = UNet2DConditionModel_ref.from_pretrained(
     base_path,
     subfolder="unet_encoder",
     torch_dtype=torch.float16,
-).to(device)
+)
 
 model_idx = 0 if torch.cuda.is_available() else -1
 
@@ -319,8 +316,6 @@ vae.requires_grad_(False)
 unet.requires_grad_(False)
 text_encoder_one.requires_grad_(False)
 text_encoder_two.requires_grad_(False)
-
-
 tensor_transfrom = transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -328,27 +323,20 @@ tensor_transfrom = transforms.Compose(
             ]
     )
 
-# Modify the pipeline initialization
 pipe = TryonPipeline.from_pretrained(
-    base_path,
-    unet=unet,
-    vae=vae,
-    text_encoder=text_encoder_one,
-    text_encoder_2=text_encoder_two,
-    tokenizer=tokenizer_one,
-    tokenizer_2=tokenizer_two,
-    scheduler=noise_scheduler,
-    torch_dtype=torch.float16,
-).to(device)
+        base_path,
+        unet=unet,
+        vae=vae,
+        feature_extractor=CLIPImageProcessor(),
+        text_encoder=text_encoder_one,
+        text_encoder_2=text_encoder_two,
+        tokenizer=tokenizer_one,
+        tokenizer_2=tokenizer_two,
+        scheduler=noise_scheduler,
+        image_encoder=image_encoder,
+        torch_dtype=torch.float16,
+)
 pipe.unet_encoder = UNet_Encoder
-
-# Ensure all models are in eval mode
-unet.eval()
-text_encoder_one.eval()
-text_encoder_two.eval()
-vae.eval()
-UNet_Encoder.eval()
-pipe.eval()
 
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5)
@@ -409,8 +397,12 @@ def generate_dummy_pose_image(human_img):
 
 def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
-        print("Preparing for try-on...")
-        
+        print("Moving models to device...")
+        openpose_model.preprocessor.body_estimation.model.to(device)
+        pipe.to(device)
+        pipe.unet_encoder.to(device)
+        print("Models moved to device successfully.")
+
         print("Resizing garment image...")
         garm_img = garm_img.convert("RGB").resize((768,1024))
         print("Garment image resized successfully.")
@@ -524,31 +516,30 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                 print("Additional prompts encoded successfully.")
 
                 print("Preparing input data...")
-                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device)
-                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device)
+                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
+                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
                 generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
                 print("Input data prepared.")
 
                 print("Generating images...")
-                with torch.no_grad():
-                    images = pipe(
-                        prompt_embeds=prompt_embeds,
-                        negative_prompt_embeds=negative_prompt_embeds,
-                        pooled_prompt_embeds=pooled_prompt_embeds,
-                        negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
-                        num_inference_steps=denoise_steps,
-                        generator=generator,
-                        strength=1.0,
-                        pose_img=pose_img,
-                        text_embeds_cloth=prompt_embeds_c,
-                        cloth=garm_tensor,
-                        mask_image=mask,
-                        image=human_img,
-                        height=1024,
-                        width=768,
-                        ip_adapter_image=garm_img.resize((768,1024)),
-                        guidance_scale=2.0,
-                    )[0]
+                images = pipe(
+                    prompt_embeds=prompt_embeds.to(device,torch.float16),
+                    negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
+                    pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
+                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                    num_inference_steps=denoise_steps,
+                    generator=generator,
+                    strength=1.0,
+                    pose_img=pose_img.to(device,torch.float16),
+                    text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
+                    cloth=garm_tensor.to(device,torch.float16),
+                    mask_image=mask,
+                    image=human_img,
+                    height=1024,
+                    width=768,
+                    ip_adapter_image=garm_img.resize((768,1024)),
+                    guidance_scale=2.0,
+                )[0]
                 print("Images generated successfully.")
 
         if is_checked_crop:
