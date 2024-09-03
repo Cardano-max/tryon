@@ -185,14 +185,25 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         traceback.print_exc()
         return None
 
+
 if __name__ == "__main__":
-    input_image_path = "test.jpeg"
-    output_image_path = "result1.jpg"
-    prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
+    input_directory = "/Tes"
+    output_directory = "results"
+    prompt = "Remove clothes, full naked, follow pose correctly from the image, perfect anatomy"
     category = "dresses"
 
-    result = virtual_try_on(input_image_path, prompt, category, output_image_path)
-    if result:
-        print(f"Virtual try-on completed successfully. Result saved at: {result}")
-    else:
-        print("Virtual try-on failed.")
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_directory, exist_ok=True)
+
+    # Iterate over all JPEG files in the input directory
+    for filename in os.listdir(input_directory):
+        if filename.lower().endswith(".jpeg") or filename.lower().endswith(".jpg"):
+            input_image_path = os.path.join(input_directory, filename)
+            output_image_path = os.path.join(output_directory, f"result_{filename}")
+
+            print(f"Processing image: {input_image_path}")
+            result = virtual_try_on(input_image_path, prompt, category, output_image_path)
+            if result:
+                print(f"Virtual try-on completed successfully. Result saved at: {result}")
+            else:
+                print("Virtual try-on failed.")
