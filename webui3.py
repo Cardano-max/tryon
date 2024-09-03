@@ -187,7 +187,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
 
 
 if __name__ == "__main__":
-    input_directory = "/Tes"
+    input_directory = "Tes/"
     output_directory = "results"
     prompt = "Remove clothes, full naked, follow pose correctly from the image, perfect anatomy"
     category = "dresses"
