@@ -648,7 +648,7 @@ with gr.Blocks(css=custom_css) as demo:
                 with gr.Column():
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=height, width=width)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
-                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body", visible=False)
+                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body", visible=True)
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On", height=height, width=width, interactive=False)
