@@ -1,4 +1,3 @@
-
 import sys
 import os
 
@@ -25,16 +24,13 @@ from transformers import (
 from diffusers import DDPMScheduler, AutoencoderKL
 from typing import List
 from transformers import AutoTokenizer
-from gradio_demo.utils_mask import Masking
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
 from PIL import Image as PILImage
 
-
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
-
 
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
@@ -42,9 +38,10 @@ from preprocess.openpose.run_openpose import OpenPose
 # Import necessary functions from modules1.util
 from modules1.util import HWC3, resize_image
 
-device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-masker = Masking()
+# Import the old masking algorithm functions
+from old_masking import get_mask_location, label_map
 
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 catalog = []
 garment_images = os.listdir('./gradio_demo/test_images/raw_garments/')
@@ -404,7 +401,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         print("Models moved to device successfully.")
 
         print("Resizing garment image...")
-        garm_img = garm_img.convert("RGB").resize((768,1024))
+        garm_img = garm_img.convert("RGB").resize((768, 1024))
         print("Garment image resized successfully.")
 
         print("Loading original image...")
@@ -459,18 +456,21 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             bottom = (height + target_height) / 2
             cropped_img = human_img_orig.crop((left, top, right, bottom))
             crop_size = cropped_img.size
-            human_img = cropped_img.resize((768,1024))
+            human_img = cropped_img.resize((768, 1024))
             print("Image cropped and resized successfully.")
         else:
             print("Resizing image without cropping...")
-            human_img = human_img_orig.resize((768,1024))
+            human_img = human_img_orig.resize((768, 1024))
             print("Image resized without cropping.")
 
         if is_checked:
-            print("Generating mask using AI-powered auto-masking...")
-            mask, mask_gray = masker.get_mask(human_img, category_dict[category])
-            mask = mask.resize((768,1024))
-            print("Mask generated using AI-powered auto-masking.")
+            print("Generating mask using old masking algorithm...")
+            # Use the old masking algorithm
+            keypoints = openpose_model(human_img.resize((384, 512)))
+            model_parse, _ = parsing_model(human_img.resize((384, 512)))
+            mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=768, height=1024)
+            mask = mask.resize((768, 1024))
+            print("Mask generated using old masking algorithm.")
         else:
             print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
@@ -480,8 +480,8 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             mask = np.array(mask)
 
         print("Preparing masked image...")
-        mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
-        mask_gray = to_pil_image((mask_gray+1.0)/2.0)
+        mask_gray = (1 - transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
+        mask_gray = to_pil_image((mask_gray + 1.0) / 2.0)
 
         print("Generating dummy pose image...")
         pose_img = generate_dummy_pose_image(human_img)
@@ -516,28 +516,28 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                 print("Additional prompts encoded successfully.")
 
                 print("Preparing input data...")
-                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
-                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
+                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device, torch.float16)
+                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device, torch.float16)
                 generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
                 print("Input data prepared.")
 
                 print("Generating images...")
                 images = pipe(
-                    prompt_embeds=prompt_embeds.to(device,torch.float16),
-                    negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
-                    pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
-                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                    prompt_embeds=prompt_embeds.to(device, torch.float16),
+                    negative_prompt_embeds=negative_prompt_embeds.to(device, torch.float16),
+                    pooled_prompt_embeds=pooled_prompt_embeds.to(device, torch.float16),
+                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device, torch.float16),
                     num_inference_steps=denoise_steps,
                     generator=generator,
                     strength=1.0,
-                    pose_img=pose_img.to(device,torch.float16),
-                    text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
-                    cloth=garm_tensor.to(device,torch.float16),
+                    pose_img=pose_img.to(device, torch.float16),
+                    text_embeds_cloth=prompt_embeds_c.to(device, torch.float16),
+                    cloth=garm_tensor.to(device, torch.float16),
                     mask_image=mask,
                     image=human_img,
                     height=1024,
                     width=768,
-                    ip_adapter_image=garm_img.resize((768,1024)),
+                    ip_adapter_image=garm_img.resize((768, 1024)),
                     guidance_scale=2.0,
                 )[0]
                 print("Images generated successfully.")
