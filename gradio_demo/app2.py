@@ -59,9 +59,9 @@ for i in range(len(garment_images)):
     })
 
 category_dict = {
+    "Full Body": "dresses",
     "Upper Body": "upper_body",
-    "Lower Body": "lower_body",
-    "Full Body": "dresses"
+    "Lower Body": "lower_body"
 }
 
 custom_css = """
@@ -468,9 +468,11 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             # Use the old masking algorithm
             keypoints = openpose_model(human_img.resize((384, 512)))
             model_parse, _ = parsing_model(human_img.resize((384, 512)))
-            mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=768, height=1024)
+            # Use "dresses" as the default category if not specified
+            mask_category = category_dict.get(category, "dresses")
+            mask, mask_gray = get_mask_location('hd', mask_category, model_parse, keypoints, width=768, height=1024)
             mask = mask.resize((768, 1024))
-            print("Mask generated using old masking algorithm.")
+            print(f"Mask generated using old masking algorithm for category: {mask_category}")
         else:
             print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
