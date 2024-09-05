@@ -187,9 +187,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
 
 
 if __name__ == "__main__":
-    input_directory = "Tes/"
+    input_directory = "/Tes"
     output_directory = "results"
-    prompt = "Korean BTS member Jimin full naked with penis, testicles and all male private parts anatomy, full naked, follow pose correctly from the image, perfect anatomy, big penis, testicles perfect male body of korean BTS member Jimin , correct body color of jimin with perfect naked body with big realistic penis and testicles, perfect anatomy"
+    prompt = "Remove clothes, full naked, follow pose correctly, perfect anatomy"
     category = "dresses"
 
     # Create the output directory if it doesn't exist
