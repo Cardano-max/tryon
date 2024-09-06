@@ -30,6 +30,10 @@ from PIL import Image as PILImage
 import torch
 from diffusers import AutoPipelineForInpainting, AutoPipelineForImage2Image
 from diffusers.utils import load_image, make_image_grid
+import torch
+from diffusers import StableDiffusionXLInpaintPipeline, StableDiffusionXLImg2ImgPipeline
+from PIL import Image
+import numpy as np
 
 
 # Import the Defocus virtual_try_on function
@@ -632,14 +636,13 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
     if result_image is not None:
         try:
             # Load the SDXL refiner model
-            refiner = AutoPipelineForInpainting.from_pretrained(
+            refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
                 "stabilityai/stable-diffusion-xl-refiner-1.0",
                 torch_dtype=torch.float16,
                 variant="fp16"
             )
             refiner.to("cuda")
             refiner.enable_model_cpu_offload()
-            refiner.enable_xformers_memory_efficient_attention()
 
             # Prepare the mask for refinement (focus on body parts, exclude face)
             refined_mask = prepare_refinement_mask(mask_image)
@@ -656,9 +659,13 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
             ).images[0]
 
             # Further enhance with image-to-image pipeline
-            img2img = AutoPipelineForImage2Image.from_pipe(refiner)
+            img2img = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                "stabilityai/stable-diffusion-xl-refiner-1.0",
+                torch_dtype=torch.float16,
+                variant="fp16"
+            )
+            img2img.to("cuda")
             img2img.enable_model_cpu_offload()
-            img2img.enable_xformers_memory_efficient_attention()
 
             final_image = img2img(
                 prompt=prompt,
@@ -674,7 +681,7 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
             return result_image, mask_image, "Refinement failed, returning original result."
     else:
         return None, None, "Initial image generation failed."
-        
+
 def prepare_refinement_mask(mask_image):
     # Convert mask to numpy array if it's not already
     if isinstance(mask_image, Image.Image):
