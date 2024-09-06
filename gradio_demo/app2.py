@@ -1,7 +1,5 @@
 import sys
 import os
-
-# Add the absolute path to the /tryon directory
 sys.path.append('/tryon')
 
 import traceback
@@ -21,7 +19,7 @@ from transformers import (
     CLIPTextModel,
     CLIPTextModelWithProjection,
 )
-from diffusers import DDPMScheduler, AutoencoderKL
+from diffusers import DDPMScheduler, AutoencoderKL, StableDiffusionXLImg2ImgPipeline
 from typing import List
 from transformers import AutoTokenizer
 from gradio_demo.utils_mask import Masking
@@ -369,6 +367,23 @@ def is_full_body_image(image):
     
     return True
 
+# Add this new function for the refinement process
+def refine_image(image, prompt, num_inference_steps=50, strength=0.3):
+    refiner = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+        "stabilityai/stable-diffusion-xl-refiner-1.0",
+        torch_dtype=torch.float16,
+    )
+    refiner.to(device)
+
+    refined_image = refiner(
+        prompt=prompt,
+        image=image,
+        num_inference_steps=num_inference_steps,
+        strength=strength
+    ).images[0]
+
+    return refined_image
+
 
 def process_with_defocus(image_path):
     try:
@@ -603,11 +618,29 @@ for ex_human in human_list_path:
     ex_dict['composite'] = None
     human_ex_list.append(ex_dict)
 
+# Update the process_tryon function to include the refinement step
 def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
+    
     if error_message:
         return None, None, error_message
-    return result_image, mask_image, ""
+    
+    try:
+        print("Starting image refinement process...")
+        refined_image = refine_image(result_image, f"A person wearing {garment_des}", num_inference_steps=30, strength=0.3)
+        print("Image refinement completed successfully.")
+        
+        # Save the refined image
+        refined_output_path = f"refined_{uuid.uuid4()}.png"
+        refined_image.save(refined_output_path)
+        print(f"Refined image saved at: {refined_output_path}")
+        
+        return refined_image, mask_image, ""
+    except Exception as e:
+        print("Error occurred during refinement:")
+        traceback.print_exc()
+        return result_image, mask_image, f"Refinement failed, returning original result. Error: {str(e)}"
+
 
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
