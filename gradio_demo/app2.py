@@ -27,6 +27,9 @@ from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
 from PIL import Image as PILImage
+import torch
+from diffusers import AutoPipelineForInpainting, AutoPipelineForImage2Image
+from diffusers.utils import load_image, make_image_grid
 
 
 # Import the Defocus virtual_try_on function
@@ -618,28 +621,77 @@ for ex_human in human_list_path:
     ex_dict['composite'] = None
     human_ex_list.append(ex_dict)
 
-# Update the process_tryon function to include the refinement step
 def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
+    # First, generate the initial try-on image
     result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
     
     if error_message:
         return None, None, error_message
     
-    try:
-        print("Starting image refinement process...")
-        refined_image = refine_image(result_image, f"A person wearing {garment_des}", num_inference_steps=30, strength=0.3)
-        print("Image refinement completed successfully.")
+    # If the initial generation was successful, proceed with refinement
+    if result_image is not None:
+        try:
+            # Load the SDXL refiner model
+            refiner = AutoPipelineForInpainting.from_pretrained(
+                "stabilityai/stable-diffusion-xl-refiner-1.0",
+                torch_dtype=torch.float16,
+                variant="fp16"
+            )
+            refiner.to("cuda")
+            refiner.enable_model_cpu_offload()
+            refiner.enable_xformers_memory_efficient_attention()
+
+            # Prepare the mask for refinement (focus on body parts, exclude face)
+            refined_mask = prepare_refinement_mask(mask_image)
+
+            # Refine the image
+            prompt = f"Enhance and refine the image, focusing on realistic body anatomy, hands, and feet. {garment_des}"
+            refined_image = refiner(
+                prompt=prompt,
+                image=result_image,
+                mask_image=refined_mask,
+                num_inference_steps=30,
+                strength=0.3,
+                guidance_scale=7.5
+            ).images[0]
+
+            # Further enhance with image-to-image pipeline
+            img2img = AutoPipelineForImage2Image.from_pipe(refiner)
+            img2img.enable_model_cpu_offload()
+            img2img.enable_xformers_memory_efficient_attention()
+
+            final_image = img2img(
+                prompt=prompt,
+                image=refined_image,
+                num_inference_steps=20,
+                strength=0.2,
+                guidance_scale=7.5
+            ).images[0]
+
+            return final_image, mask_image, ""
+        except Exception as e:
+            print(f"Error during refinement: {str(e)}")
+            return result_image, mask_image, "Refinement failed, returning original result."
+    else:
+        return None, None, "Initial image generation failed."
         
-        # Save the refined image
-        refined_output_path = f"refined_{uuid.uuid4()}.png"
-        refined_image.save(refined_output_path)
-        print(f"Refined image saved at: {refined_output_path}")
-        
-        return refined_image, mask_image, ""
-    except Exception as e:
-        print("Error occurred during refinement:")
-        traceback.print_exc()
-        return result_image, mask_image, f"Refinement failed, returning original result. Error: {str(e)}"
+def prepare_refinement_mask(mask_image):
+    # Convert mask to numpy array if it's not already
+    if isinstance(mask_image, Image.Image):
+        mask_np = np.array(mask_image)
+    else:
+        mask_np = mask_image
+
+    # Create a mask that focuses on body parts but excludes the face
+    # This is a simplified example; you might need to adjust based on your specific needs
+    height, width = mask_np.shape[:2]
+    refined_mask = np.ones((height, width), dtype=np.uint8) * 255
+
+    # Exclude the face area (assuming the face is in the upper 1/3 of the image)
+    face_height = height // 3
+    refined_mask[:face_height, :] = 0
+
+    return Image.fromarray(refined_mask)
 
 
 with gr.Blocks(css=custom_css) as demo:
