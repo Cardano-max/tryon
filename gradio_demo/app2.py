@@ -626,80 +626,82 @@ for ex_human in human_list_path:
     human_ex_list.append(ex_dict)
 
 def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
-    # First, generate the initial try-on image
-    result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
-    
-    if error_message:
-        return None, None, error_message
-    
-    # If the initial generation was successful, proceed with refinement
-    if result_image is not None:
-        try:
-            # Load the SDXL refiner model
-            refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
-                "stabilityai/stable-diffusion-xl-refiner-1.0",
-                torch_dtype=torch.float16,
-                variant="fp16"
-            )
-            refiner.to("cuda")
-            refiner.enable_model_cpu_offload()
+    try:
+        # Generate unique ID for this try-on session
+        session_id = str(uuid.uuid4())
+        save_dir = "eval_images"
+        os.makedirs(save_dir, exist_ok=True)
 
-            # Prepare the mask for refinement (focus on body parts, exclude face)
-            refined_mask = prepare_refinement_mask(mask_image)
+        # Step 1: Initial try-on
+        result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
+        
+        if error_message:
+            return None, None, error_message
 
-            # Refine the image
-            prompt = f"Enhance and refine the image, focusing on realistic body anatomy, hands, and feet. {garment_des}"
-            refined_image = refiner(
-                prompt=prompt,
-                image=result_image,
-                mask_image=refined_mask,
-                num_inference_steps=30,
-                strength=0.3,
-                guidance_scale=7.5
-            ).images[0]
+        # Save initial results
+        initial_result_path = os.path.join(save_dir, f"{session_id}_initial_result.png")
+        initial_mask_path = os.path.join(save_dir, f"{session_id}_initial_mask.png")
+        result_image.save(initial_result_path)
+        mask_image.save(initial_mask_path)
 
-            # Further enhance with image-to-image pipeline
-            img2img = StableDiffusionXLImg2ImgPipeline.from_pretrained(
-                "stabilityai/stable-diffusion-xl-refiner-1.0",
-                torch_dtype=torch.float16,
-                variant="fp16"
-            )
-            img2img.to("cuda")
-            img2img.enable_model_cpu_offload()
+        # Step 2: Refinement
+        if result_image is not None:
+            try:
+                # Load the SDXL refiner model
+                refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
+                    "stabilityai/stable-diffusion-xl-refiner-1.0",
+                    torch_dtype=torch.float16,
+                    variant="fp16"
+                ).to("cuda")
+                refiner.enable_model_cpu_offload()
 
-            final_image = img2img(
-                prompt=prompt,
-                image=refined_image,
-                num_inference_steps=20,
-                strength=0.2,
-                guidance_scale=7.5
-            ).images[0]
+                # Prepare the refinement mask using the Masking class
+                refined_mask, _ = masker.get_mask(result_image, category='full_body')
+                refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
+                refined_mask.save(refined_mask_path)
 
-            return final_image, mask_image, ""
-        except Exception as e:
-            print(f"Error during refinement: {str(e)}")
-            return result_image, mask_image, "Refinement failed, returning original result."
-    else:
-        return None, None, "Initial image generation failed."
+                # Refine the image
+                prompt = f"Enhance and refine the image, focusing on realistic body anatomy, hands, and feet. {garment_des}"
+                refined_image = refiner(
+                    prompt=prompt,
+                    image=result_image,
+                    mask_image=refined_mask,
+                    num_inference_steps=30,
+                    strength=0.3,
+                    guidance_scale=7.5
+                ).images[0]
 
-def prepare_refinement_mask(mask_image):
-    # Convert mask to numpy array if it's not already
-    if isinstance(mask_image, Image.Image):
-        mask_np = np.array(mask_image)
-    else:
-        mask_np = mask_image
+                refined_image_path = os.path.join(save_dir, f"{session_id}_refined_image.png")
+                refined_image.save(refined_image_path)
 
-    # Create a mask that focuses on body parts but excludes the face
-    # This is a simplified example; you might need to adjust based on your specific needs
-    height, width = mask_np.shape[:2]
-    refined_mask = np.ones((height, width), dtype=np.uint8) * 255
+                # Step 3: Final enhancement
+                img2img = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                    "stabilityai/stable-diffusion-xl-refiner-1.0",
+                    torch_dtype=torch.float16,
+                    variant="fp16"
+                ).to("cuda")
+                img2img.enable_model_cpu_offload()
 
-    # Exclude the face area (assuming the face is in the upper 1/3 of the image)
-    face_height = height // 3
-    refined_mask[:face_height, :] = 0
+                final_image = img2img(
+                    prompt=prompt,
+                    image=refined_image,
+                    num_inference_steps=20,
+                    strength=0.2,
+                    guidance_scale=7.5
+                ).images[0]
 
-    return Image.fromarray(refined_mask)
+                final_image_path = os.path.join(save_dir, f"{session_id}_final_image.png")
+                final_image.save(final_image_path)
 
+                return final_image, refined_mask, ""
+            except Exception as e:
+                print(f"Error during refinement: {str(e)}")
+                return result_image, mask_image, "Refinement failed, returning original result."
+        else:
+            return None, None, "Initial image generation failed."
+    except Exception as e:
+        print(f"Error in process_tryon: {str(e)}")
+        return None, None, f"An error occurred: {str(e)}"
 
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
