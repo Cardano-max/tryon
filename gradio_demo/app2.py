@@ -22,7 +22,9 @@ from transformers import (
 from diffusers import DDPMScheduler, AutoencoderKL, StableDiffusionXLImg2ImgPipeline
 from typing import List
 from transformers import AutoTokenizer
-from gradio_demo.utils_mask import Masking
+from gradio_demo.utils_mask import get_mask_location
+from preprocess.humanparsing.run_parsing import Parsing
+from preprocess.openpose.run_openpose import OpenPose
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
@@ -489,13 +491,25 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            mask, mask_gray = masker.get_mask(human_img, category_dict[category])
-            mask = mask.resize((768,1024))
+            model_parse = parsing_model.run(human_img)
+            keypoints = openpose_model.run(human_img)
+            mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=768, height=1024)
+            mask = mask.resize((768, 1024))
             print("Mask generated using AI-powered auto-masking.")
+            
+            # Save the first mask
+            first_mask_path = os.path.join(save_dir, f"{unique_id}_FIRST_MASK.png")
+            mask.save(first_mask_path)
+            print(f"First mask saved at: {first_mask_path}")
         else:
             print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
             print("Mask generated using user-provided layer.")
+            
+            # Save the first mask
+            first_mask_path = os.path.join(save_dir, f"{unique_id}_FIRST_MASK.png")
+            Image.fromarray(mask).save(first_mask_path)
+            print(f"First mask saved at: {first_mask_path}")
 
         if isinstance(mask, Image.Image):
             mask = np.array(mask)
@@ -503,6 +517,11 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         print("Preparing masked image...")
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
+
+        # Save the second mask (mask_gray)
+        second_mask_path = os.path.join(save_dir, f"{unique_id}_SECOND_MASK.png")
+        mask_gray.save(second_mask_path)
+        print(f"Second mask saved at: {second_mask_path}")
 
         print("Generating dummy pose image...")
         pose_img = generate_dummy_pose_image(human_img)
@@ -655,8 +674,11 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 ).to("cuda")
                 refiner.enable_model_cpu_offload()
 
-                # Prepare the refinement mask using the Masking class
-                refined_mask, _ = masker.get_mask(result_image, category='full_body')
+                # Generate new mask for refinement using the new masking function
+                print("Generating refined mask...")
+                model_parse = parsing_model.run(result_image)
+                keypoints = openpose_model.run(result_image)
+                refined_mask, _ = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=result_image.width, height=result_image.height)
                 refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
                 refined_mask.save(refined_mask_path)
 
@@ -682,9 +704,18 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 ).to("cuda")
                 img2img.enable_model_cpu_offload()
 
+                # Generate new mask for final enhancement
+                print("Generating final enhancement mask...")
+                model_parse = parsing_model.run(refined_image)
+                keypoints = openpose_model.run(refined_image)
+                final_mask, _ = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=refined_image.width, height=refined_image.height)
+                final_mask_path = os.path.join(save_dir, f"{session_id}_final_mask.png")
+                final_mask.save(final_mask_path)
+
                 final_image = img2img(
                     prompt=prompt,
                     image=refined_image,
+                    mask_image=final_mask,
                     num_inference_steps=20,
                     strength=0.2,
                     guidance_scale=7.5
@@ -693,7 +724,7 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 final_image_path = os.path.join(save_dir, f"{session_id}_final_image.png")
                 final_image.save(final_image_path)
 
-                return final_image, refined_mask, ""
+                return final_image, final_mask, ""
             except Exception as e:
                 print(f"Error during refinement: {str(e)}")
                 return result_image, mask_image, "Refinement failed, returning original result."
