@@ -499,7 +499,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             keypoints = openpose_model(human_img.resize((384, 512)))
             
             # Handle the case where model_parse_result is a tuple
-            if isinstance(model_parse_result, tuple):
+            if type(model_parse_result) == tuple:
                 model_parse = model_parse_result[0]  # Assume the first element is the parse result
             else:
                 model_parse = model_parse_result
@@ -513,13 +513,13 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             print(f"Keypoints content: {keypoints}")
             
             # Ensure keypoints is in the correct format for get_mask_location
-            if isinstance(keypoints, dict) and "pose_keypoints_2d" in keypoints:
+            if type(keypoints) == dict and "pose_keypoints_2d" in keypoints:
                 keypoints_for_mask = keypoints
             else:
                 keypoints_for_mask = {"pose_keypoints_2d": keypoints}
             
             # Use "upper_body" as the default category if not provided
-            mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "dresses"
+            mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "upper_body"
             
             mask, mask_gray = get_mask_location('hd', mask_category, model_parse, keypoints_for_mask, width=768, height=1024)
             mask = mask.resize((768, 1024))
