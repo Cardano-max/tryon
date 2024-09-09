@@ -495,9 +495,15 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            model_parse = parsing_model(human_img.resize((384, 512)))
+            model_parse_result = parsing_model(human_img.resize((384, 512)))
             keypoints = openpose_model(human_img.resize((384, 512)))
             
+            # Handle the case where model_parse_result is a tuple
+            if isinstance(model_parse_result, tuple):
+                model_parse = model_parse_result[0]  # Assume the first element is the parse result
+            else:
+                model_parse = model_parse_result
+
             # Convert model_parse to Image if it's not already
             if not isinstance(model_parse, Image.Image):
                 model_parse = Image.fromarray(model_parse.astype(np.uint8))
