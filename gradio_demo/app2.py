@@ -495,8 +495,13 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            model_parse = parsing_model(human_img.resize((384, 512)))
+            model_parse, _ = parsing_model(human_img.resize((384, 512)))
             keypoints = openpose_model(human_img.resize((384, 512)))
+            
+            # Convert model_parse to Image if it's not already
+            if not isinstance(model_parse, Image.Image):
+                model_parse = Image.fromarray(model_parse.astype(np.uint8))
+            
             mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=768, height=1024)
             mask = mask.resize((768, 1024))
             print("Mask generated using AI-powered auto-masking.")
