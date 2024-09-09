@@ -496,7 +496,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
             model_parse = parsing_model(human_img.resize((384, 512)))
-            keypoints = openpose_model.run(human_img.resize((384, 512)))
+            keypoints = openpose_model(human_img.resize((384, 512)))
             mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=768, height=1024)
             mask = mask.resize((768, 1024))
             print("Mask generated using AI-powered auto-masking.")
@@ -681,7 +681,7 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 # Generate new mask for refinement using the new masking function
                 print("Generating refined mask...")
                 model_parse = parsing_model(result_image.resize((384, 512)))
-                keypoints = openpose_model.run(result_image.resize((384, 512)))
+                keypoints = openpose_model(result_image.resize((384, 512)))
                 refined_mask, _ = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=result_image.width, height=result_image.height)
                 refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
                 refined_mask.save(refined_mask_path)
@@ -711,7 +711,7 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 # Generate new mask for final enhancement
                 print("Generating final enhancement mask...")
                 model_parse = parsing_model(refined_image.resize((384, 512)))
-                keypoints = openpose_model.run(refined_image.resize((384, 512)))
+                keypoints = openpose_model(refined_image.resize((384, 512)))
                 final_mask, _ = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=refined_image.width, height=refined_image.height)
                 final_mask_path = os.path.join(save_dir, f"{session_id}_final_mask.png")
                 final_mask.save(final_mask_path)
