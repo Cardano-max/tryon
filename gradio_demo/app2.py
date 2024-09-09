@@ -41,6 +41,10 @@ import numpy as np
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
 
+# Import the Masking class
+from preprocess.masking import Masking
+
+
 
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
@@ -49,8 +53,8 @@ from preprocess.openpose.run_openpose import OpenPose
 from modules1.util import HWC3, resize_image
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+# Initialize Masker
 masker = Masking()
-
 
 catalog = []
 garment_images = os.listdir('./gradio_demo/test_images/raw_garments/')
