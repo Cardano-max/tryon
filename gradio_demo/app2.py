@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append('/tryon')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import traceback
 import gradio as gr
@@ -36,6 +36,7 @@ import torch
 from diffusers import StableDiffusionXLInpaintPipeline, StableDiffusionXLImg2ImgPipeline
 from PIL import Image
 import numpy as np
+from masking_module.masking_module import generate_mask as hf_generate_mask
 
 
 # Import the Defocus virtual_try_on function
@@ -493,46 +494,27 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             human_img = human_img_orig.resize((768,1024))
             print("Image resized without cropping.")
 
+        # Update the masking logic in start_tryon function:
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            model_parse_result = parsing_model(human_img.resize((384, 512)))
-            keypoints = openpose_model(human_img.resize((384, 512)))
-            
-            # Handle the case where model_parse_result is a tuple
-            if type(model_parse_result) == tuple:
-                model_parse = model_parse_result[0]  # Assume the first element is the parse result
+            task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
+            text_prompt = f"A person wearing {category} clothing"
+            masks = hf_generate_mask(
+                image_input=human_img,
+                image_url=None,
+                task_prompt=task_prompt,
+                text_prompt=text_prompt,
+                dilate=10,
+                merge_masks=True,
+                return_rectangles=False,
+                invert_mask=False
+            )
+            if masks and len(masks) > 0:
+                mask = masks[0]  # Use the first mask
+                mask = Image.fromarray(mask).resize((768, 1024))
             else:
-                model_parse = model_parse_result
-
-            # Convert model_parse to Image if it's not already
-            if not isinstance(model_parse, Image.Image):
-                model_parse = Image.fromarray(model_parse.astype(np.uint8))
-            
-            # Print debug information about keypoints
-            print(f"Keypoints type: {type(keypoints)}")
-            print(f"Keypoints content: {keypoints}")
-            
-            # Ensure keypoints is in the correct format for get_mask_location
-            if type(keypoints) == dict and "pose_keypoints_2d" in keypoints:
-                keypoints_for_mask = keypoints["pose_keypoints_2d"]
-            else:
-                keypoints_for_mask = keypoints
-
-            # Ensure keypoints_for_mask is a 2D array
-            if len(np.array(keypoints_for_mask).shape) == 1:
-                keypoints_for_mask = np.array(keypoints_for_mask).reshape(-1, 2)
-            
-            # Use "upper_body" as the default category if not provided
-            mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "dresses"
-            
-            mask, mask_gray = get_mask_location('hd', mask_category, model_parse, keypoints_for_mask, width=768, height=1024)
-            mask = mask.resize((768, 1024))
+                raise ValueError("No mask generated")
             print("Mask generated using AI-powered auto-masking.")
-            
-            # Save the first mask
-            first_mask_path = os.path.join(save_dir, f"{unique_id}_FIRST_MASK.png")
-            mask.save(first_mask_path)
-            print(f"First mask saved at: {first_mask_path}")
         else:
             print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
@@ -708,25 +690,24 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
 
                 # Generate new mask for refinement using the new masking function
                 print("Generating refined mask...")
-                model_parse = parsing_model(result_image.resize((384, 512)))
-                keypoints = openpose_model(result_image.resize((384, 512)))
-                refined_mask, _ = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=result_image.width, height=result_image.height)
+                task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
+                text_prompt = f"A person wearing {category} clothing"
+                refined_masks = hf_generate_mask(
+                    image_input=result_image,
+                    image_url=None,
+                    task_prompt=task_prompt,
+                    text_prompt=text_prompt,
+                    dilate=10,
+                    merge_masks=True,
+                    return_rectangles=False,
+                    invert_mask=False
+                )
+                if refined_masks and len(refined_masks) > 0:
+                    refined_mask = Image.fromarray(refined_masks[0])
+                else:
+                    raise ValueError("No refined mask generated")
                 refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
                 refined_mask.save(refined_mask_path)
-
-                # Refine the image
-                prompt = f"Enhance and refine the image, focusing on realistic body anatomy, hands, and feet. {garment_des}"
-                refined_image = refiner(
-                    prompt=prompt,
-                    image=result_image,
-                    mask_image=refined_mask,
-                    num_inference_steps=30,
-                    strength=0.3,
-                    guidance_scale=7.5
-                ).images[0]
-
-                refined_image_path = os.path.join(save_dir, f"{session_id}_refined_image.png")
-                refined_image.save(refined_image_path)
 
                 # Step 3: Final enhancement
                 img2img = StableDiffusionXLImg2ImgPipeline.from_pretrained(

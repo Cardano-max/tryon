@@ -1,5 +1,7 @@
 import sys
 import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import time
 import traceback
 import numpy as np
@@ -16,6 +18,8 @@ from modules1.util import HWC3, resize_image
 from preprocess.masking import Masking
 import uuid
 import signal
+from masking_module.masking_module import generate_mask as hf_generate_mask
+
 
 print(sys.path)
 
@@ -38,12 +42,26 @@ def generate_mask(person_image, category="dresses"):
     
     print("Generating mask...")
     try:
-        inpaint_mask = masker.get_mask(person_image, category=category)
+        task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
+        text_prompt = f"A person wearing {category} clothing"
+        inpaint_mask = hf_generate_mask(
+            image_input=person_image,
+            image_url=None,
+            task_prompt=task_prompt,
+            text_prompt=text_prompt,
+            dilate=10,
+            merge_masks=True,
+            return_rectangles=False,
+            invert_mask=False
+        )
         print("Mask generated successfully.")
+        if inpaint_mask and len(inpaint_mask) > 0:
+            return inpaint_mask[0]  # Return the first mask
+        else:
+            raise ValueError("No mask generated")
     except Exception as e:
         print(f"Error occurred while generating mask: {str(e)}")
         raise e
-    return np.array(inpaint_mask)
 
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
