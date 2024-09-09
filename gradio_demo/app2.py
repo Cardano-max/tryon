@@ -513,12 +513,15 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             print(f"Keypoints content: {keypoints}")
             
             # Ensure keypoints is in the correct format for get_mask_location
-            if type(keypoints) == dict and "pose_keypoints_2d" in keypoints:
+            if isinstance(keypoints, dict) and "pose_keypoints_2d" in keypoints:
                 keypoints_for_mask = keypoints
             else:
                 keypoints_for_mask = {"pose_keypoints_2d": keypoints}
             
-            mask, mask_gray = get_mask_location('hd', category, model_parse, keypoints_for_mask, width=768, height=1024)
+            # Use "upper_body" as the default category if not provided
+            mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "dresses"
+            
+            mask, mask_gray = get_mask_location('hd', mask_category, model_parse, keypoints_for_mask, width=768, height=1024)
             mask = mask.resize((768, 1024))
             print("Mask generated using AI-powered auto-masking.")
             
