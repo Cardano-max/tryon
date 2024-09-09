@@ -779,7 +779,22 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On", id=1):
             with gr.Row():
                 with gr.Column():
-                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Click here to Upload Your Photo', interactive=True, height=height, width=width, layers=False, brush=False, eraser=False, transforms=[])
+                    # Define height and width before using them
+                    height = 512  # You can adjust this value as needed
+                    width = 512   # You can adjust this value as needed
+
+                    imgs = gr.ImageEditor(
+                        sources='upload',
+                        type="pil",
+                        label='Click here to Upload Your Photo',
+                        interactive=True,
+                        height=height,
+                        width=width,
+                        layers=False,
+                        brush=False,
+                        eraser=False,
+                        transforms=[]
+                    )
 
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
