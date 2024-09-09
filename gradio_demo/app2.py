@@ -514,9 +514,13 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             
             # Ensure keypoints is in the correct format for get_mask_location
             if type(keypoints) == dict and "pose_keypoints_2d" in keypoints:
-                keypoints_for_mask = keypoints
+                keypoints_for_mask = keypoints["pose_keypoints_2d"]
             else:
-                keypoints_for_mask = {"pose_keypoints_2d": keypoints}
+                keypoints_for_mask = keypoints
+
+            # Ensure keypoints_for_mask is a 2D array
+            if len(np.array(keypoints_for_mask).shape) == 1:
+                keypoints_for_mask = np.array(keypoints_for_mask).reshape(-1, 2)
             
             # Use "upper_body" as the default category if not provided
             mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "upper_body"
