@@ -523,7 +523,7 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
                 keypoints_for_mask = np.array(keypoints_for_mask).reshape(-1, 2)
             
             # Use "upper_body" as the default category if not provided
-            mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "upper_body"
+            mask_category = category if category in ["dresses", "upper_body", "lower_body"] else "dresses"
             
             mask, mask_gray = get_mask_location('hd', mask_category, model_parse, keypoints_for_mask, width=768, height=1024)
             mask = mask.resize((768, 1024))
