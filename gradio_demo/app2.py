@@ -495,12 +495,20 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            model_parse, _ = parsing_model(human_img.resize((384, 512)))
-            keypoints, _ = openpose_model(human_img.resize((384, 512)))
+            model_parse = parsing_model(human_img.resize((384, 512)))
+            keypoints = openpose_model(human_img.resize((384, 512)))
             
             # Convert model_parse to Image if it's not already
             if not isinstance(model_parse, Image.Image):
                 model_parse = Image.fromarray(model_parse.astype(np.uint8))
+            
+            # Print debug information about keypoints
+            print(f"Keypoints type: {type(keypoints)}")
+            print(f"Keypoints content: {keypoints}")
+            
+            # Ensure keypoints is a dictionary with the expected structure
+            if not isinstance(keypoints, dict) or "pose_keypoints_2d" not in keypoints:
+                keypoints = {"pose_keypoints_2d": keypoints}
             
             mask, mask_gray = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=768, height=1024)
             mask = mask.resize((768, 1024))
@@ -750,8 +758,6 @@ with gr.Blocks(css=custom_css) as demo:
             <p>Your Virtual Fitting Room</p>
         </div>
     """)
-    height = 550
-    width = 450
     with gr.Tabs() as tabs:
         with gr.TabItem("Fashion Catalog", id=0):
             gr.HTML("""
