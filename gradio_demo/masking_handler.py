@@ -1,6 +1,6 @@
 import numpy as np
 from PIL import Image
-from masking_module.masking import generate_mask
+from masking_module.masking_module import generate_mask
 
 def get_mask(image, category):
     # Convert PIL Image to numpy array if necessary

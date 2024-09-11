@@ -98,13 +98,16 @@ def generate_mask(
             text=text_prompt
         )
     
-    with calculateDuration("sv.Detections"):
-        detections = sv.Detections.from_lmm(
-            lmm=sv.LMM.FLORENCE_2,
-            result=result,
-            resolution_wh=image_input.size
+    with calculateDuration("Create detections"):
+        # Create detections manually from the Florence result
+        bboxes = [box for box in result['<CAPTION_TO_PHRASE_GROUNDING>']['bboxes']]
+        labels = result['<CAPTION_TO_PHRASE_GROUNDING>']['labels']
+        detections = sv.Detections(
+            xyxy=np.array(bboxes),
+            class_id=np.arange(len(labels)),
+            confidence=np.ones(len(labels))
         )
-    
+
     images = []
     if return_rectangles:
         with calculateDuration("generate rectangle mask"):
