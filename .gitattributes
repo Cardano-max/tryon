@@ -1,5 +1,8 @@
 ckpt/humanparsing/parsing_atr.onnx filter=lfs diff=lfs merge=lfs -text
 ckpt/humanparsing/parsing_lip.onnx filter=lfs diff=lfs merge=lfs -text
 *.onnx filter=lfs diff=lfs merge=lfs -text
+<<<<<<< HEAD
 masking_module/checkpoints/*.pt filter=lfs diff=lfs merge=lfs -text
 *.pt filter=lfs diff=lfs merge=lfs -text
+=======
+>>>>>>> ea5c832a55bf5207d19d205fca0f309764ce0718
