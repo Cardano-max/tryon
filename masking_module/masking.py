@@ -98,12 +98,17 @@ def generate_mask(
     bboxes = result.get('<CAPTION_TO_PHRASE_GROUNDING>', {}).get('bboxes', [])
     
     with calculateDuration("sv.Detections"):
-        # start to detect
+        # Create an empty mask with the same dimensions as the input image
+        empty_mask = np.zeros((image_input.height, image_input.width, len(bboxes)), dtype=bool)
+        
+        # Create detections using from_sam method
         detections = sv.Detections.from_sam(
-            xyxy=np.array(bboxes),
-            mask=np.zeros((image_input.height, image_input.width, len(bboxes))),
-            confidence=np.ones(len(bboxes)),
+            masks=empty_mask,
+            confidence=np.ones(len(bboxes))
         )
+        
+        # Set the xyxy attribute manually
+        detections.xyxy = np.array(bboxes)
     
     images = []
     if return_rectangles:
