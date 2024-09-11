@@ -1,6 +1,10 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import numpy as np
 from PIL import Image
-from masking_module.masking_module import generate_mask
+from masking_module.masking import generate_mask
 
 def get_mask(image, category):
     # Convert PIL Image to numpy array if necessary
@@ -12,11 +16,11 @@ def get_mask(image, category):
     # Define task prompt and text prompt based on the category
     task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
     if category == "upper_body":
-        text_prompt = "Dress"
+        text_prompt = "Torso"
     elif category == "lower_body":
         text_prompt = "Dress"
     else:  # Full body
-        text_prompt = "Dress"
+        text_prompt = "Full Dress"
 
     # Generate mask using the new masking module
     masks = generate_mask(
@@ -38,8 +42,8 @@ def get_mask(image, category):
         return np.zeros(image_np.shape[:2], dtype=np.uint8)
 
 def test_masking():
-    # Load a test image (replace with the path to your test image)
-    test_image_path = "/Tes/3a757077-2880-401e-81f6-88890919f203.jpeg"
+    # Load the test image
+    test_image_path = "/tryon/Tes/3a757077-2880-401e-81f6-88890919f203.jpeg"
     test_image = Image.open(test_image_path)
 
     # Test with different categories
