@@ -42,9 +42,17 @@ def run_sam_inference(
     bboxes = sorted(bboxes, key=lambda bbox: bbox[0])
     mask, score, _ = model.predict(box=bboxes, multimask_output=False)
 
-    # dirty fix; remove this later
-    if len(mask.shape) == 4:
-        mask = np.squeeze(mask)
+    if mask is None:
+        print("SAM model returned None for mask. Using fallback method.")
+        # Create a simple rectangular mask as a fallback
+        mask = np.zeros(image.shape[:2], dtype=bool)
+        for bbox in bboxes:
+            x1, y1, x2, y2 = map(int, bbox)
+            mask[y1:y2, x1:x2] = True
+    else:
+        # dirty fix; remove this later
+        if len(mask.shape) == 4:
+            mask = np.squeeze(mask)
 
     detections.mask = mask.astype(bool)
     return detections
