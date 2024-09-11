@@ -497,24 +497,13 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         # Update the masking logic in start_tryon function:
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
-            text_prompt = f"A person wearing {category} clothing"
-            masks = hf_generate_mask(
-                image_input=human_img,
-                image_url=None,
-                task_prompt=task_prompt,
-                text_prompt=text_prompt,
-                dilate=10,
-                merge_masks=True,
-                return_rectangles=False,
-                invert_mask=False
-            )
-            if masks and len(masks) > 0:
-                mask = masks[0]  # Use the first mask
-                mask = Image.fromarray(mask).resize((768, 1024))
-            else:
-                raise ValueError("No mask generated")
+            mask = hf_generate_mask(human_img, category=category_dict[category])
             print("Mask generated using AI-powered auto-masking.")
+            
+            # Save the first mask
+            first_mask_path = os.path.join(save_dir, f"{unique_id}_FIRST_MASK.png")
+            mask.save(first_mask_path)
+            print(f"First mask saved at: {first_mask_path}")
         else:
             print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
@@ -690,22 +679,7 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
 
                 # Generate new mask for refinement using the new masking function
                 print("Generating refined mask...")
-                task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
-                text_prompt = f"A person wearing {category} clothing"
-                refined_masks = hf_generate_mask(
-                    image_input=result_image,
-                    image_url=None,
-                    task_prompt=task_prompt,
-                    text_prompt=text_prompt,
-                    dilate=10,
-                    merge_masks=True,
-                    return_rectangles=False,
-                    invert_mask=False
-                )
-                if refined_masks and len(refined_masks) > 0:
-                    refined_mask = Image.fromarray(refined_masks[0])
-                else:
-                    raise ValueError("No refined mask generated")
+                refined_mask = hf_generate_mask(result_image, category=category_dict[category])
                 refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
                 refined_mask.save(refined_mask_path)
 
@@ -719,15 +693,13 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
 
                 # Generate new mask for final enhancement
                 print("Generating final enhancement mask...")
-                model_parse = parsing_model(refined_image.resize((384, 512)))
-                keypoints = openpose_model(refined_image.resize((384, 512)))
-                final_mask, _ = get_mask_location('hd', category_dict[category], model_parse, keypoints, width=refined_image.width, height=refined_image.height)
+                final_mask = hf_generate_mask(result_image, category=category_dict[category])
                 final_mask_path = os.path.join(save_dir, f"{session_id}_final_mask.png")
                 final_mask.save(final_mask_path)
 
                 final_image = img2img(
                     prompt=prompt,
-                    image=refined_image,
+                    image=result_image,
                     mask_image=final_mask,
                     num_inference_steps=20,
                     strength=0.2,

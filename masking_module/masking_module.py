@@ -12,8 +12,8 @@ import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.florence import load_florence_model, run_florence_inference
-from utils.sam import load_sam_image_model, run_sam_inference
+from .utils.florence import load_florence_model, run_florence_inference
+from .utils.sam import load_sam_image_model, run_sam_inference
 import supervision as sv
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
