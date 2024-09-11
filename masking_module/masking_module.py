@@ -18,9 +18,13 @@ import supervision as sv
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Define the paths for SAM model
+SAM_CHECKPOINT_PATH = "masking_module/sam2/checkpoints/sam2_hiera_large.pt"
+SAM_CONFIG_PATH = "masking_module/sam2/configs/sam2_hiera_l.yaml"
+
 # Load models
 FLORENCE_MODEL, FLORENCE_PROCESSOR = load_florence_model(device=DEVICE)
-SAM_IMAGE_MODEL = load_sam_image_model(device=DEVICE)
+SAM_IMAGE_MODEL = load_sam_image_model(device=DEVICE, config=SAM_CONFIG_PATH, checkpoint=SAM_CHECKPOINT_PATH)
 
 class calculateDuration:
     def __init__(self, activity_name=""):
