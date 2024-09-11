@@ -764,6 +764,31 @@ with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
             <h2>Arbi-TryOn</h2>
+            <p>Your Virtual Fitting Room</p>
+        </div>
+    """)
+    with gr.Tabs() as tabs:
+        with gr.TabItem("Fashion Catalog", id=0):
+            gr.HTML("""
+                <div class="header">
+                <p>Choose your favourite design and let us do the magic</p>
+                </div>
+            """)
+            with gr.Row():
+                garment_gallery = gr.Gallery(
+                    value=[item["image"] for item in catalog],
+                    columns=4,
+                    show_label=False,
+                    elem_id="garment_gallery",
+                    height=f"{math.ceil(len(catalog)/4)*412.5}px",
+                    allow_preview=False,
+                    min_width=250
+                )
+
+        # ... (rest of your code)
+
+if __name__ == "__main__":
+    demo.launch(share=True)
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
@@ -777,7 +802,7 @@ with gr.Blocks(css=custom_css) as demo:
                 <div class="header">
                 <p>Choose your favourite design and let us do the magic</p>
                 </div>
-                """)
+            """)
             with gr.Row():
                 garment_gallery = gr.Gallery(
                     value=[item["image"] for item in catalog],
