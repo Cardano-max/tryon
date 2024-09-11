@@ -714,6 +714,56 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
         print(f"Error in process_tryon: {str(e)}")
         return None, None, f"An error occurred: {str(e)}"
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import torch
+import requests
+from tqdm import tqdm
+from masking_module.masking import generate_mask as hf_generate_mask
+from masking_module.utils.florence import load_florence_model
+from masking_module.utils.sam import load_sam_image_model
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Model URLs and paths
+FLORENCE_CHECKPOINT = "microsoft/Florence-2-large-ft"
+SAM_CHECKPOINT_URL = "https://huggingface.co/spaces/jiuface/florence-sam-masking/resolve/main/checkpoints/sam2_hiera_large.pt"
+SAM_CONFIG_URL = "https://huggingface.co/spaces/jiuface/florence-sam-masking/raw/main/configs/sam2_hiera_l.yaml"
+SAM_CHECKPOINT_PATH = "masking_module/sam2/checkpoints/sam2_hiera_large.pt"
+SAM_CONFIG_PATH = "masking_module/sam2/configs/sam2_hiera_l.yaml"
+
+def download_file(url, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    response = requests.get(url, stream=True)
+    total_size = int(response.headers.get('content-length', 0))
+    block_size = 1024
+    with open(path, 'wb') as file, tqdm(
+        desc=path,
+        total=total_size,
+        unit='iB',
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as progress_bar:
+        for data in response.iter_content(block_size):
+            size = file.write(data)
+            progress_bar.update(size)
+
+# Download and load models
+print("Downloading and loading models...")
+if not os.path.exists(SAM_CHECKPOINT_PATH):
+    download_file(SAM_CHECKPOINT_URL, SAM_CHECKPOINT_PATH)
+if not os.path.exists(SAM_CONFIG_PATH):
+    download_file(SAM_CONFIG_URL, SAM_CONFIG_PATH)
+
+FLORENCE_MODEL, FLORENCE_PROCESSOR = load_florence_model(device=DEVICE, checkpoint=FLORENCE_CHECKPOINT)
+SAM_IMAGE_MODEL = load_sam_image_model(device=DEVICE, config=SAM_CONFIG_PATH, checkpoint=SAM_CHECKPOINT_PATH)
+
+with gr.Blocks(css=custom_css) as demo:
+    gr.HTML("""
+        <div class="header">
+            <h2>Arbi-TryOn</h2>
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
