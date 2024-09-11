@@ -99,16 +99,14 @@ def generate_mask(
     
     with calculateDuration("sv.Detections"):
         # Create an empty mask with the same dimensions as the input image
-        empty_mask = np.zeros((image_input.height, image_input.width, len(bboxes)), dtype=bool)
+        empty_mask = np.zeros((image_input.height, image_input.width), dtype=bool)
         
         # Create detections using from_sam method
-        detections = sv.Detections.from_sam(
-            masks=empty_mask,
+        detections = sv.Detections(
+            xyxy=np.array(bboxes),
+            mask=np.array([empty_mask for _ in range(len(bboxes))]),
             confidence=np.ones(len(bboxes))
         )
-        
-        # Set the xyxy attribute manually
-        detections.xyxy = np.array(bboxes)
     
     images = []
     if return_rectangles:
@@ -159,7 +157,7 @@ def generate_mask(
 # Usage example
 if __name__ == "__main__":
     # Test with an image file
-    image_path = "path/to/your/image.jpg"
+    image_path = "/tryon/Tes/3a757077-2880-401e-81f6-88890919f203.jpeg"
     image = Image.open(image_path)
     
     # Test with an image URL
@@ -167,7 +165,7 @@ if __name__ == "__main__":
     # image = None
     
     task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
-    text_prompt = "A person wearing a red shirt"
+    text_prompt = "Full Dress"
     
     masks = generate_mask(
         image_input=image,
