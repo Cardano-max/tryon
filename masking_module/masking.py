@@ -94,11 +94,14 @@ def generate_mask(
             text=text_prompt
         )
     
+    # Extract bboxes from the result
+    bboxes = result.get('<CAPTION_TO_PHRASE_GROUNDING>', {}).get('bboxes', [])
+    
     with calculateDuration("sv.Detections"):
         # start to detect
         detections = sv.Detections.from_sam(
             xyxy=np.array(bboxes),
-            mask=np.zeros((image.height, image.width, len(bboxes))),
+            mask=np.zeros((image_input.height, image_input.width, len(bboxes))),
             confidence=np.ones(len(bboxes)),
         )
     
