@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append('/tryon')
 
 import traceback
 import gradio as gr
@@ -22,9 +22,7 @@ from transformers import (
 from diffusers import DDPMScheduler, AutoencoderKL, StableDiffusionXLImg2ImgPipeline
 from typing import List
 from transformers import AutoTokenizer
-from gradio_demo.utils_mask import get_mask_location
-from preprocess.humanparsing.run_parsing import Parsing
-from preprocess.openpose.run_openpose import OpenPose
+from gradio_demo.masking_handler import get_mask  # Import the new masking function
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
@@ -36,13 +34,9 @@ import torch
 from diffusers import StableDiffusionXLInpaintPipeline, StableDiffusionXLImg2ImgPipeline
 from PIL import Image
 import numpy as np
-from masking_module.masking import generate_mask as hf_generate_mask
 
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
-
-# Import the Masking class
-from preprocess.masking import Masking
 
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
@@ -51,8 +45,6 @@ from preprocess.openpose.run_openpose import OpenPose
 from modules1.util import HWC3, resize_image
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-# Initialize Masker
-masker = Masking()
 
 catalog = []
 garment_images = os.listdir('./gradio_demo/test_images/raw_garments/')
@@ -266,6 +258,7 @@ def face_blur(pil_image):
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
 
+
 unet = UNet2DConditionModel.from_pretrained(
     base_path,
     subfolder="unet",
@@ -394,6 +387,7 @@ def refine_image(image, prompt, num_inference_steps=50, strength=0.3):
 
     return refined_image
 
+
 def process_with_defocus(image_path):
     try:
         prompt = "Remove clothes, full naked, straight pose standing posing forward straight, perfect anatomy"
@@ -489,25 +483,15 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
             human_img = human_img_orig.resize((768,1024))
             print("Image resized without cropping.")
 
-        # Update the masking logic in start_tryon function:
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            mask = hf_generate_mask(human_img, category=category_dict[category])
+            mask = get_mask(human_img, category_dict[category])
+            mask = Image.fromarray(mask).resize((768,1024))
             print("Mask generated using AI-powered auto-masking.")
-            
-            # Save the first mask
-            first_mask_path = os.path.join(save_dir, f"{unique_id}_FIRST_MASK.png")
-            mask.save(first_mask_path)
-            print(f"First mask saved at: {first_mask_path}")
         else:
             print("Generating mask using user-provided layer...")
             mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
             print("Mask generated using user-provided layer.")
-            
-            # Save the first mask
-            first_mask_path = os.path.join(save_dir, f"{unique_id}_FIRST_MASK.png")
-            Image.fromarray(mask).save(first_mask_path)
-            print(f"First mask saved at: {first_mask_path}")
 
         if isinstance(mask, Image.Image):
             mask = np.array(mask)
@@ -515,11 +499,6 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
         print("Preparing masked image...")
         mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
         mask_gray = to_pil_image((mask_gray+1.0)/2.0)
-
-        # Save the second mask (mask_gray)
-        second_mask_path = os.path.join(save_dir, f"{unique_id}_SECOND_MASK.png")
-        mask_gray.save(second_mask_path)
-        print(f"Second mask saved at: {second_mask_path}")
 
         print("Generating dummy pose image...")
         pose_img = generate_dummy_pose_image(human_img)
@@ -672,11 +651,24 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 ).to("cuda")
                 refiner.enable_model_cpu_offload()
 
-                # Generate new mask for refinement using the new masking function
-                print("Generating refined mask...")
-                refined_mask = hf_generate_mask(result_image, category=category_dict[category])
+                # Prepare the refinement mask using the Masking class
+                refined_mask, _ = masker.get_mask(result_image, category='full_body')
                 refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
                 refined_mask.save(refined_mask_path)
+
+                # Refine the image
+                prompt = f"Enhance and refine the image, focusing on realistic body anatomy, hands, and feet. {garment_des}"
+                refined_image = refiner(
+                    prompt=prompt,
+                    image=result_image,
+                    mask_image=refined_mask,
+                    num_inference_steps=30,
+                    strength=0.3,
+                    guidance_scale=7.5
+                ).images[0]
+
+                refined_image_path = os.path.join(save_dir, f"{session_id}_refined_image.png")
+                refined_image.save(refined_image_path)
 
                 # Step 3: Final enhancement
                 img2img = StableDiffusionXLImg2ImgPipeline.from_pretrained(
@@ -686,16 +678,9 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 ).to("cuda")
                 img2img.enable_model_cpu_offload()
 
-                # Generate new mask for final enhancement
-                print("Generating final enhancement mask...")
-                final_mask = hf_generate_mask(result_image, category=category_dict[category])
-                final_mask_path = os.path.join(save_dir, f"{session_id}_final_mask.png")
-                final_mask.save(final_mask_path)
-
                 final_image = img2img(
                     prompt=prompt,
-                    image=result_image,
-                    mask_image=final_mask,
+                    image=refined_image,
                     num_inference_steps=20,
                     strength=0.2,
                     guidance_scale=7.5
@@ -704,7 +689,7 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
                 final_image_path = os.path.join(save_dir, f"{session_id}_final_image.png")
                 final_image.save(final_image_path)
 
-                return final_image, final_mask, ""
+                return final_image, refined_mask, ""
             except Exception as e:
                 print(f"Error during refinement: {str(e)}")
                 return result_image, mask_image, "Refinement failed, returning original result."
@@ -714,52 +699,6 @@ def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, 
         print(f"Error in process_tryon: {str(e)}")
         return None, None, f"An error occurred: {str(e)}"
 
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import torch
-import requests
-from tqdm import tqdm
-from masking_module.masking import generate_mask as hf_generate_mask
-from masking_module.utils.florence import load_florence_model
-from masking_module.utils.sam import load_sam_image_model
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Model URLs and paths
-FLORENCE_CHECKPOINT = "microsoft/Florence-2-large-ft"
-SAM_CHECKPOINT_URL = "https://huggingface.co/spaces/jiuface/florence-sam-masking/resolve/main/checkpoints/sam2_hiera_large.pt"
-SAM_CONFIG_URL = "https://huggingface.co/spaces/jiuface/florence-sam-masking/raw/main/configs/sam2_hiera_l.yaml"
-SAM_CHECKPOINT_PATH = "masking_module/sam2/checkpoints/sam2_hiera_large.pt"
-SAM_CONFIG_PATH = "masking_module/sam2/configs/sam2_hiera_l.yaml"
-
-def download_file(url, path):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    response = requests.get(url, stream=True)
-    total_size = int(response.headers.get('content-length', 0))
-    block_size = 1024
-    with open(path, 'wb') as file, tqdm(
-        desc=path,
-        total=total_size,
-        unit='iB',
-        unit_scale=True,
-        unit_divisor=1024,
-    ) as progress_bar:
-        for data in response.iter_content(block_size):
-            size = file.write(data)
-            progress_bar.update(size)
-
-# Download and load models
-print("Downloading and loading models...")
-if not os.path.exists(SAM_CHECKPOINT_PATH):
-    download_file(SAM_CHECKPOINT_URL, SAM_CHECKPOINT_PATH)
-if not os.path.exists(SAM_CONFIG_PATH):
-    download_file(SAM_CONFIG_URL, SAM_CONFIG_PATH)
-
-FLORENCE_MODEL, FLORENCE_PROCESSOR = load_florence_model(device=DEVICE, checkpoint=FLORENCE_CHECKPOINT)
-SAM_IMAGE_MODEL = load_sam_image_model(device=DEVICE, config=SAM_CONFIG_PATH, checkpoint=SAM_CHECKPOINT_PATH)
-
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
         <div class="header">
@@ -767,42 +706,15 @@ with gr.Blocks(css=custom_css) as demo:
             <p>Your Virtual Fitting Room</p>
         </div>
     """)
+    height = 550
+    width = 450
     with gr.Tabs() as tabs:
         with gr.TabItem("Fashion Catalog", id=0):
             gr.HTML("""
                 <div class="header">
                 <p>Choose your favourite design and let us do the magic</p>
                 </div>
-            """)
-            with gr.Row():
-                garment_gallery = gr.Gallery(
-                    value=[item["image"] for item in catalog],
-                    columns=4,
-                    show_label=False,
-                    elem_id="garment_gallery",
-                    height=f"{math.ceil(len(catalog)/4)*412.5}px",
-                    allow_preview=False,
-                    min_width=250
-                )
-
-        # ... (rest of your code)
-
-if __name__ == "__main__":
-    demo.launch(share=True)
-with gr.Blocks(css=custom_css) as demo:
-    gr.HTML("""
-        <div class="header">
-            <h2>Arbi-TryOn</h2>
-            <p>Your Virtual Fitting Room</p>
-        </div>
-    """)
-    with gr.Tabs() as tabs:
-        with gr.TabItem("Fashion Catalog", id=0):
-            gr.HTML("""
-                <div class="header">
-                <p>Choose your favourite design and let us do the magic</p>
-                </div>
-            """)
+                """)
             with gr.Row():
                 garment_gallery = gr.Gallery(
                     value=[item["image"] for item in catalog],
@@ -817,22 +729,7 @@ with gr.Blocks(css=custom_css) as demo:
         with gr.TabItem("Virtual Try-On", id=1):
             with gr.Row():
                 with gr.Column():
-                    # Define height and width before using them
-                    height = 512  # You can adjust this value as needed
-                    width = 512   # You can adjust this value as needed
-
-                    imgs = gr.ImageEditor(
-                        sources='upload',
-                        type="pil",
-                        label='Click here to Upload Your Photo',
-                        interactive=True,
-                        height=height,
-                        width=width,
-                        layers=False,
-                        brush=False,
-                        eraser=False,
-                        transforms=[]
-                    )
+                    imgs = gr.ImageEditor(sources='upload', type="pil", label='Click here to Upload Your Photo', interactive=True, height=height, width=width, layers=False, brush=False, eraser=False, transforms=[])
 
                     auto_mask = gr.Checkbox(label="Use AI-Powered Auto-Masking", value=True, visible=False)
                     auto_crop = gr.Checkbox(label="Smart Auto-Crop & Resizing", value=False, visible=False)
@@ -840,7 +737,7 @@ with gr.Blocks(css=custom_css) as demo:
                 with gr.Column():
                     garment_image = gr.Image(label="Selected Garment", type="pil", interactive=False, height=height, width=width)
                     description = gr.Textbox(label="Garment Description", placeholder="E.g., Sleek black evening dress with lace details", visible=False)
-                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body", visible=True)
+                    category = gr.Radio(["Upper Body", "Lower Body", "Full Body"], label="Garment Category", value="Full Body", visible=False)
 
                 with gr.Column():
                     output_image = gr.Image(label="Your Virtual Try-On", height=height, width=width, interactive=False)
