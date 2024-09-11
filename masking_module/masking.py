@@ -56,15 +56,15 @@ def fetch_image_from_url(image_url):
 @torch.inference_mode()
 @torch.autocast(device_type="cuda", dtype=torch.bfloat16)
 def generate_mask(
-    image_input: Optional[Image.Image],
-    image_url: Optional[str],
-    task_prompt: str,
-    text_prompt: Optional[str] = None,
-    dilate: int = 0,
-    merge_masks: bool = False,
+    image_input: Optional[Image.Image] = None,
+    image_url: Optional[str] = None,
+    task_prompt: str = "<CAPTION_TO_PHRASE_GROUNDING>",
+    text_prompt: str = "A person wearing clothing",
+    dilate: int = 10,
+    merge_masks: bool = True,
     return_rectangles: bool = False,
     invert_mask: bool = False
-) -> Optional[List[np.ndarray]]:
+) -> List[np.ndarray]:
     
     if not image_input and not image_url:
         print("Please provide either an image or an image URL.")
@@ -96,10 +96,10 @@ def generate_mask(
     
     with calculateDuration("sv.Detections"):
         # start to detect
-        detections = sv.Detections.from_lmm(
-            lmm=sv.LMM.FLORENCE_2,
-            result=result,
-            resolution_wh=image_input.size
+        detections = sv.Detections.from_sam(
+            xyxy=np.array(bboxes),
+            mask=np.zeros((image.height, image.width, len(bboxes))),
+            confidence=np.ones(len(bboxes)),
         )
     
     images = []
