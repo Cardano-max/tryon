@@ -36,16 +36,13 @@ import torch
 from diffusers import StableDiffusionXLInpaintPipeline, StableDiffusionXLImg2ImgPipeline
 from PIL import Image
 import numpy as np
-from masking_module.masking_module import generate_mask as hf_generate_mask
-
+from masking_module.masking import generate_mask as hf_generate_mask
 
 # Import the Defocus virtual_try_on function
 from webui3 import virtual_try_on as defocus_virtual_try_on
 
 # Import the Masking class
 from preprocess.masking import Masking
-
-
 
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
@@ -269,7 +266,6 @@ def face_blur(pil_image):
 base_path = 'yisol/IDM-VTON'
 example_path = os.path.join(os.path.dirname(__file__), 'example')
 
-
 unet = UNet2DConditionModel.from_pretrained(
     base_path,
     subfolder="unet",
@@ -397,7 +393,6 @@ def refine_image(image, prompt, num_inference_steps=50, strength=0.3):
     ).images[0]
 
     return refined_image
-
 
 def process_with_defocus(image_path):
     try:

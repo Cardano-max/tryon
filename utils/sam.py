@@ -15,8 +15,8 @@ SAM_CONFIG = "sam2_hiera_l.yaml"
 
 def load_sam_image_model(
     device: torch.device,
-    config: str = SAM_CONFIG,
-    checkpoint: str = SAM_CHECKPOINT
+    config: str,
+    checkpoint: str
 ) -> SAM2ImagePredictor:
     model = build_sam2(config, checkpoint, device=device)
     return SAM2ImagePredictor(sam_model=model)
@@ -24,8 +24,8 @@ def load_sam_image_model(
 
 def load_sam_video_model(
     device: torch.device,
-    config: str = SAM_CONFIG,
-    checkpoint: str = SAM_CHECKPOINT
+    config: str,
+    checkpoint: str
 ) -> Any:
     return build_sam2_video_predictor(config, checkpoint, device=device)
 
