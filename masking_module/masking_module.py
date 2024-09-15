@@ -9,8 +9,11 @@ import time
 import sys
 import os
 
-# Add the parent directory to the Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the necessary paths
+current_dir = os.path.dirname(os.path.abspath(__file__))
+tryon_dir = os.path.dirname(current_dir)
+segment_anything_dir = os.path.join(tryon_dir, 'segment-anything-2')
+sys.path.extend([tryon_dir, segment_anything_dir])
 
 from sam2.build_sam import build_sam2
 from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
@@ -22,11 +25,11 @@ from hydra import initialize, compose
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Define the paths for SAM model
-SAM_CHECKPOINT_PATH = "segment-anything-2/checkpoints/sam2_hiera_large.pt"
-SAM_CONFIG_PATH = "segment-anything-2/sam2_configs/sam2_hiera_l.yaml"
+SAM_CHECKPOINT_PATH = os.path.join(segment_anything_dir, "checkpoints", "sam2_hiera_large.pt")
+SAM_CONFIG_PATH = os.path.join(segment_anything_dir, "sam2_configs", "sam2_hiera_l.yaml")
 
 # Initialize Hydra
-initialize(version_base=None, config_path="segment-anything-2/sam2_configs")
+initialize(version_base=None, config_path=os.path.join(segment_anything_dir, "sam2_configs"))
 
 # Build SAM 2 model
 sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH, device=DEVICE, apply_postprocessing=True)
