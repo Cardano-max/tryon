@@ -22,11 +22,11 @@ from hydra import initialize, compose
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Define the paths for SAM model
-SAM_CHECKPOINT_PATH = "checkpoints/sam2_hiera_large.pt"
-SAM_CONFIG_PATH = "sam2_configs/sam2_hiera_l.yaml"
+SAM_CHECKPOINT_PATH = "segment-anything-2/checkpoints/sam2_hiera_large.pt"
+SAM_CONFIG_PATH = "segment-anything-2/sam2_configs/sam2_hiera_l.yaml"
 
 # Initialize Hydra
-initialize(version_base=None, config_path="sam2_configs")
+initialize(version_base=None, config_path="segment-anything-2/sam2_configs")
 
 # Build SAM 2 model
 sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH, device=DEVICE, apply_postprocessing=True)
