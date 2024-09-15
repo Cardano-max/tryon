@@ -29,7 +29,7 @@ os.chdir(segment_anything_dir)
 initialize(version_base=None, config_path="sam2_configs")
 
 # Build SAM 2 model
-sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH, device=DEVICE, apply_postprocessing=True)
+sam2 = build_sam2(SAM_CONFIG_PATH, SAM_CHECKPOINT_PATH, DEVICE)
 
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(sam2)
