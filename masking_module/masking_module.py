@@ -22,14 +22,20 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SAM_CHECKPOINT_PATH = os.path.join(segment_anything_dir, "checkpoints", "sam2_hiera_large.pt")
 SAM_CONFIG_PATH = os.path.join(segment_anything_dir, "sam2_configs", "sam2_hiera_l.yaml")
 
-# Initialize Hydra
-initialize(version_base=None, config_path=os.path.join(segment_anything_dir, "sam2_configs"))
+# Change the working directory to the segment-anything-2 folder
+os.chdir(segment_anything_dir)
+
+# Initialize Hydra with a relative path
+initialize(version_base=None, config_path="sam2_configs")
 
 # Build SAM 2 model
 sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH, device=DEVICE, apply_postprocessing=True)
 
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(sam2)
+
+# Change back to the original working directory
+os.chdir(current_dir)
 
 def generate_mask(
     image_input: Image.Image,
