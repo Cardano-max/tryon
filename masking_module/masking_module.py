@@ -2,12 +2,8 @@ import torch
 import numpy as np
 import cv2
 from PIL import Image
-from io import BytesIO
-import requests
-from typing import Optional, List
-import time
-import sys
 import os
+import sys
 
 # Add the necessary paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,9 +12,7 @@ segment_anything_dir = os.path.join(tryon_dir, 'segment-anything-2')
 sys.path.extend([tryon_dir, segment_anything_dir])
 
 from sam2.build_sam import build_sam2
-from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
-from autodistill_grounded_sam_2 import GroundedSAM2
-from autodistill.detection import CaptionOntology
+from sam2.predictor import SAM2ImagePredictor
 from hydra import initialize, compose
 
 # Initialize CUDA device
@@ -34,30 +28,8 @@ initialize(version_base=None, config_path=os.path.join(segment_anything_dir, "sa
 # Build SAM 2 model
 sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH, device=DEVICE, apply_postprocessing=True)
 
-# Initialize the automatic mask generator
-mask_generator = SAM2AutomaticMaskGenerator(sam2)
-
-# Monkey patch the load_SAM function in autodistill_grounded_sam_2
-from autodistill_grounded_sam_2 import helpers
-def patched_load_SAM():
-    model_cfg = os.path.join(segment_anything_dir, "sam2_configs", "sam2_hiera_l.yaml")
-    checkpoint = os.path.join(segment_anything_dir, "checkpoints", "sam2_hiera_large.pt")
-    from sam2.predictor import SAM2ImagePredictor
-    predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint, device=DEVICE))
-    return predictor
-
-helpers.load_SAM = patched_load_SAM
-
-# Initialize GroundedSAM2
-base_model = GroundedSAM2(
-    ontology=CaptionOntology(
-        {
-            "Full Dress": "Full Dress",
-            "Upper Body": "Upper Body",
-            "Lower Body": "Lower Body"
-        }
-    )
-)
+# Initialize the SAM2 predictor
+predictor = SAM2ImagePredictor(sam2)
 
 def generate_mask(
     image_input: Image.Image,
@@ -68,30 +40,30 @@ def generate_mask(
     # Convert PIL Image to numpy array
     image_np = np.array(image_input.convert("RGB"))
 
-    # Run inference using GroundedSAM2
-    results = base_model.predict(image_np, ontology={category: category})
+    # Set the image for the predictor
+    predictor.set_image(image_np)
 
-    # Create a blank mask
-    mask = np.zeros(image_np.shape[:2], dtype=np.uint8)
+    # Generate masks for the entire image
+    masks, _, _ = predictor.predict(
+        point_coords=None,
+        point_labels=None,
+        box=None,
+        multimask_output=True
+    )
 
-    # Fill the mask with white for the detected object
-    if results.mask is not None:
-        for single_mask in results.mask:
-            mask = np.logical_or(mask, single_mask).astype(np.uint8)
-
-    # Convert to binary mask (0 and 255)
-    binary_mask = mask * 255
+    # Combine all masks
+    combined_mask = np.any(masks, axis=0).astype(np.uint8) * 255
 
     # Apply dilation if specified
     if dilate > 0:
         kernel = np.ones((dilate, dilate), np.uint8)
-        binary_mask = cv2.dilate(binary_mask, kernel, iterations=1)
+        combined_mask = cv2.dilate(combined_mask, kernel, iterations=1)
 
     # Invert mask if specified
     if invert_mask:
-        binary_mask = cv2.bitwise_not(binary_mask)
+        combined_mask = cv2.bitwise_not(combined_mask)
 
-    return binary_mask
+    return combined_mask
 
 # Test function
 def test_masking():
