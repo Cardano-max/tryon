@@ -37,6 +37,17 @@ sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(sam2)
 
+# Monkey patch the load_SAM function in autodistill_grounded_sam_2
+from autodistill_grounded_sam_2 import helpers
+def patched_load_SAM():
+    model_cfg = os.path.join(segment_anything_dir, "sam2_configs", "sam2_hiera_l.yaml")
+    checkpoint = os.path.join(segment_anything_dir, "checkpoints", "sam2_hiera_large.pt")
+    from sam2.predictor import SAM2ImagePredictor
+    predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint, device=DEVICE))
+    return predictor
+
+helpers.load_SAM = patched_load_SAM
+
 # Initialize GroundedSAM2
 base_model = GroundedSAM2(
     ontology=CaptionOntology(
