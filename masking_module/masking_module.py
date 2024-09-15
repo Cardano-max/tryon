@@ -9,10 +9,10 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 tryon_dir = os.path.dirname(current_dir)
 segment_anything_dir = os.path.join(tryon_dir, 'segment-anything-2')
-sys.path.extend([tryon_dir, segment_anything_dir])
+sys.path.append(segment_anything_dir)
 
-from segment_anything_2.sam2.build_sam import build_sam2
-from segment_anything_2.sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+from sam2.build_sam import build_sam2
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
 from hydra import initialize, compose
 
 # Initialize CUDA device
