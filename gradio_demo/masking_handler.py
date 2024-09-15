@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 from PIL import Image
-from masking_module.masking import generate_mask
+from masking_module.masking_module import generate_mask
 
 def get_mask(image, category):
     # Convert PIL Image to numpy array if necessary
@@ -13,41 +13,26 @@ def get_mask(image, category):
     else:
         image_np = image
 
-    # Define task prompt and text prompt based on the category
-    task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
-    if category == "upper_body":
-        text_prompt = "Torso"
-    elif category == "lower_body":
-        text_prompt = "Dress"
-    else:  # Full body
-        text_prompt = "Full Dress"
+    # Map category to the format expected by the masking module
+    category_mapping = {
+        "upper_body": "Upper Body",
+        "lower_body": "Lower Body",
+        "dresses": "Full Dress"
+    }
+    mapped_category = category_mapping.get(category, "Full Dress")
 
     # Generate mask using the new masking module
-    masks = generate_mask(
-        image_input=Image.fromarray(image_np),
-        image_url=None,
-        task_prompt=task_prompt,
-        text_prompt=text_prompt,
-        dilate=10,
-        merge_masks=True,
-        return_rectangles=False,
-        invert_mask=False
-    )
+    mask = generate_mask(Image.fromarray(image_np), mapped_category)
 
-    if masks and len(masks) > 0:
-        # Return the first (and only, since merge_masks=True) mask
-        return masks[0]
-    else:
-        # Return a blank mask if generation failed
-        return np.zeros(image_np.shape[:2], dtype=np.uint8)
+    return mask
 
 def test_masking():
     # Load the test image
-    test_image_path = "/tryon/Tes/3a757077-2880-401e-81f6-88890919f203.jpeg"
+    test_image_path = "/imagePIL.png"
     test_image = Image.open(test_image_path)
 
     # Test with different categories
-    categories = ["upper_body", "lower_body", "full_body"]
+    categories = ["upper_body", "lower_body", "dresses"]
 
     for category in categories:
         print(f"Testing masking for {category}...")

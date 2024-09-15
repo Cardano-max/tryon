@@ -12,141 +12,92 @@ import os
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from .utils.florence import load_florence_model, run_florence_inference
-from .utils.sam import load_sam_image_model, run_sam_inference
-import supervision as sv
+from sam2.build_sam import build_sam2
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+from autodistill_grounded_sam_2 import GroundedSAM2
+from autodistill.detection import CaptionOntology
+from hydra import initialize, compose
 
+# Initialize CUDA device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Define the paths for SAM model
-SAM_CHECKPOINT_PATH = "masking_module/sam2/checkpoints/sam2_hiera_large.pt"
-SAM_CONFIG_PATH = "masking_module/sam2/configs/sam2_hiera_l.yaml"
+SAM_CHECKPOINT_PATH = "checkpoints/sam2_hiera_large.pt"
+SAM_CONFIG_PATH = "sam2_configs/sam2_hiera_l.yaml"
 
-# Load models
-FLORENCE_MODEL, FLORENCE_PROCESSOR = load_florence_model(device=DEVICE)
-SAM_IMAGE_MODEL = load_sam_image_model(device=DEVICE, config=SAM_CONFIG_PATH, checkpoint=SAM_CHECKPOINT_PATH)
+# Initialize Hydra
+initialize(version_base=None, config_path="sam2_configs")
 
-class calculateDuration:
-    def __init__(self, activity_name=""):
-        self.activity_name = activity_name
+# Build SAM 2 model
+sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=SAM_CHECKPOINT_PATH, device=DEVICE, apply_postprocessing=True)
 
-    def __enter__(self):
-        self.start_time = time.time()
-        self.start_time_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.start_time))
-        print(f"Activity: {self.activity_name}, Start time: {self.start_time_formatted}")
-        return self
-    
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.end_time = time.time()
-        self.elapsed_time = self.end_time - self.start_time
-        self.end_time_formatted = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.end_time))
-        
-        if self.activity_name:
-            print(f"Elapsed time for {self.activity_name}: {self.elapsed_time:.6f} seconds")
-        else:
-            print(f"Elapsed time: {self.elapsed_time:.6f} seconds")
-        
-        print(f"Activity: {self.activity_name}, End time: {self.start_time_formatted}")
+# Initialize the automatic mask generator
+mask_generator = SAM2AutomaticMaskGenerator(sam2)
 
-def fetch_image_from_url(image_url):
-    try:
-        response = requests.get(image_url)
-        response.raise_for_status()
-        img = Image.open(BytesIO(response.content))
-        return img
-    except Exception as e:
-        print(f"Error fetching image: {str(e)}")
-        return None
+# Initialize GroundedSAM2
+base_model = GroundedSAM2(
+    ontology=CaptionOntology(
+        {
+            "Full Dress": "Full Dress",
+            "Upper Body": "Upper Body",
+            "Lower Body": "Lower Body"
+        }
+    )
+)
 
-@torch.inference_mode()
-@torch.autocast(device_type="cuda", dtype=torch.bfloat16)
 def generate_mask(
-    image_input: Optional[Image.Image],
-    image_url: Optional[str],
-    task_prompt: str,
-    text_prompt: Optional[str] = None,
-    dilate: int = 0,
-    merge_masks: bool = False,
-    return_rectangles: bool = False,
+    image_input: Image.Image,
+    category: str,
+    dilate: int = 10,
     invert_mask: bool = False
-) -> Optional[List[np.ndarray]]:
-    
-    if not image_input and not image_url:
-        print("Please provide either an image or an image URL.")
-        return None
-    
-    if not task_prompt:
-        print("Please enter a task prompt.")
-        return None
-   
-    if image_url:
-        with calculateDuration("Download Image"):
-            print("start to fetch image from url", image_url)
-            image_input = fetch_image_from_url(image_url)
-            if image_input is None:
-                return None
-            print("fetch image success")
-    
-    with calculateDuration("FLORENCE"):
-        print(task_prompt, text_prompt)
-        _, result = run_florence_inference(
-            model=FLORENCE_MODEL,
-            processor=FLORENCE_PROCESSOR,
-            device=DEVICE,
-            image=image_input,
-            task=task_prompt,
-            text=text_prompt
-        )
-    
-    with calculateDuration("Create detections"):
-        # Create detections manually from the Florence result
-        bboxes = [box for box in result['<CAPTION_TO_PHRASE_GROUNDING>']['bboxes']]
-        labels = result['<CAPTION_TO_PHRASE_GROUNDING>']['labels']
-        detections = sv.Detections(
-            xyxy=np.array(bboxes),
-            class_id=np.arange(len(labels)),
-            confidence=np.ones(len(labels))
-        )
+) -> np.ndarray:
+    # Convert PIL Image to numpy array
+    image_np = np.array(image_input.convert("RGB"))
 
-    images = []
-    if return_rectangles:
-        with calculateDuration("generate rectangle mask"):
-            (image_width, image_height) = image_input.size
-            bboxes = detections.xyxy
-            merge_mask_image = np.zeros((image_height, image_width), dtype=np.uint8)
-            bboxes = sorted(bboxes, key=lambda bbox: bbox[0])
-            for bbox in bboxes:
-                x1, y1, x2, y2 = map(int, bbox)
-                cv2.rectangle(merge_mask_image, (x1, y1), (x2, y2), 255, thickness=cv2.FILLED)
-                clip_mask = np.zeros((image_height, image_width), dtype=np.uint8)
-                cv2.rectangle(clip_mask, (x1, y1), (x2, y2), 255, thickness=cv2.FILLED)
-                images.append(clip_mask)
-            if merge_masks:
-                images = [merge_mask_image] + images
-    else:
-        with calculateDuration("generate segment mask"):
-            detections = run_sam_inference(SAM_IMAGE_MODEL, image_input, detections)
-            if len(detections) == 0:
-                print("No objects detected.")
-                return None
-            print("mask generated:", len(detections.mask))
-            kernel_size = dilate
-            kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    # Run inference using GroundedSAM2
+    results = base_model.predict(image_np, ontology={category: category})
 
-            for i in range(len(detections.mask)):
-                mask = detections.mask[i].astype(np.uint8) * 255
-                if dilate > 0:
-                    mask = cv2.dilate(mask, kernel, iterations=1)
-                images.append(mask)
+    # Create a blank mask
+    mask = np.zeros(image_np.shape[:2], dtype=np.uint8)
 
-            if merge_masks:
-                merged_mask = np.zeros_like(images[0], dtype=np.uint8)
-                for mask in images:
-                    merged_mask = cv2.bitwise_or(merged_mask, mask)
-                images = [merged_mask]
-    
+    # Fill the mask with white for the detected object
+    if results.mask is not None:
+        for single_mask in results.mask:
+            mask = np.logical_or(mask, single_mask).astype(np.uint8)
+
+    # Convert to binary mask (0 and 255)
+    binary_mask = mask * 255
+
+    # Apply dilation if specified
+    if dilate > 0:
+        kernel = np.ones((dilate, dilate), np.uint8)
+        binary_mask = cv2.dilate(binary_mask, kernel, iterations=1)
+
+    # Invert mask if specified
     if invert_mask:
-        with calculateDuration("invert mask colors"):
-            images = [cv2.bitwise_not(mask) for mask in images]
+        binary_mask = cv2.bitwise_not(binary_mask)
 
-    return images
+    return binary_mask
+
+# Test function
+def test_masking():
+    # Load a test image
+    test_image_path = "/imagePIL.png"
+    test_image = Image.open(test_image_path)
+
+    # Test with different categories
+    categories = ["Full Dress", "Upper Body", "Lower Body"]
+
+    for category in categories:
+        print(f"Testing masking for {category}...")
+        mask = generate_mask(test_image, category)
+
+        # Save the generated mask
+        mask_image = Image.fromarray(mask)
+        mask_image.save(f"test_mask_{category.lower().replace(' ', '_')}.png")
+        print(f"Mask for {category} saved as test_mask_{category.lower().replace(' ', '_')}.png")
+
+    print("Masking test completed.")
+
+if __name__ == "__main__":
+    test_masking()

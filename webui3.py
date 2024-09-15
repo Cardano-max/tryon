@@ -15,18 +15,14 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from preprocess.masking import Masking
+from masking_module.masking_module import generate_mask
 import uuid
 import signal
-from masking_module.masking_module import generate_mask as hf_generate_mask
 
 
 print(sys.path)
 
 os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-
-# Initialize Masker
-masker = Masking()
 
 class TimeoutException(Exception):
     pass
@@ -36,33 +32,6 @@ def timeout_handler(signum, frame):
 
 signal.signal(signal.SIGALRM, timeout_handler)
 
-def generate_mask(person_image, category="dresses"):
-    if not isinstance(person_image, Image.Image):
-        person_image = Image.fromarray(person_image)
-    
-    print("Generating mask...")
-    try:
-        task_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
-        text_prompt = f"A person wearing {category} clothing"
-        inpaint_mask = hf_generate_mask(
-            image_input=person_image,
-            image_url=None,
-            task_prompt=task_prompt,
-            text_prompt=text_prompt,
-            dilate=10,
-            merge_masks=True,
-            return_rectangles=False,
-            invert_mask=False
-        )
-        print("Mask generated successfully.")
-        if inpaint_mask and len(inpaint_mask) > 0:
-            return inpaint_mask[0]  # Return the first mask
-        else:
-            raise ValueError("No mask generated")
-    except Exception as e:
-        print(f"Error occurred while generating mask: {str(e)}")
-        raise e
-
 def virtual_try_on(person_image_path, prompt, category="dresses", output_path=None):
     try:
         print(f"Loading person image from: {person_image_path}")
@@ -70,7 +39,7 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         person_image = np.array(person_image)
         print("Person image loaded successfully.")
 
-        inpaint_mask = generate_mask(person_image, category)
+        inpaint_mask = generate_mask(Image.fromarray(person_image), category)
 
         orig_person_h, orig_person_w = person_image.shape[:2]
         person_aspect_ratio = orig_person_h / orig_person_w
