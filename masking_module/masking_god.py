@@ -1,17 +1,22 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 from autodistill_grounded_sam_2 import GroundedSAM2
 from autodistill.detection import CaptionOntology
 
 def run_masking():
+    # Set the device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     # Define the ontology mapping between the prompt and the class
     base_model = GroundedSAM2(
         ontology=CaptionOntology(
             {
                 "Full Dress": "Full Dress"
             }
-        )
+        ),
+        device=device  # Specify the device here
     )
 
     # Path to the image
