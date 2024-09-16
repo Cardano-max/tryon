@@ -25,7 +25,6 @@ initialize(version_base=None, config_path=os.path.join(segment_anything_dir, "sa
 
 # Build SAM 2 model
 sam2 = build_sam2(model_cfg, sam2_checkpoint, device=DEVICE, apply_postprocessing=True)
-
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(
     model=sam2,
