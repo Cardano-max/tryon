@@ -29,6 +29,12 @@ sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=sam2_checkpoint, de
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(sam2)
 
+# Monkey patch the build_sam2 function in autodistill_grounded_sam_2
+from autodistill_grounded_sam_2 import helpers
+def patched_build_sam2(model_cfg, checkpoint):
+    return build_sam2(config_file=model_cfg, ckpt_path=checkpoint, device=DEVICE, apply_postprocessing=True)
+helpers.build_sam2 = patched_build_sam2
+
 def generate_mask(image_path, category):
     # Load the image
     image = np.array(Image.open(image_path).convert("RGB"))
