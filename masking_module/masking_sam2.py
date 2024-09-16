@@ -32,7 +32,7 @@ mask_generator = SAM2AutomaticMaskGenerator(
     stability_score_thresh=0.92,
     crop_n_layers=1,
     crop_n_points_downscale_factor=2,
-    min_mask_region_area=100,
+    min_mask_region_area=100
 )
 
 def generate_mask(image_path, category):
