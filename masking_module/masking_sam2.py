@@ -13,6 +13,7 @@ sys.path.append(segment_anything_dir)
 
 from sam2.build_sam import build_sam2
 from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 # Set up paths
 sam2_checkpoint = os.path.join(segment_anything_dir, "checkpoints", "sam2_hiera_large.pt")
@@ -59,5 +60,5 @@ if __name__ == "__main__":
     mask = generate_mask(test_image_path, category)
 
     # Save the generated mask
-    cv2.imwrite('test_mask.png', mask)
+    Image.fromarray(mask).save('test_mask.png')
     print("Mask generated and saved as test_mask.png")
