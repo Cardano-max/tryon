@@ -15,7 +15,7 @@ def run_masking():
     )
 
     # Path to the image
-    image_path = "/tryon/masking_module/imagePIL.png"  # Update this path
+    image_path = "path/to/your/image.jpg"  # Update this path
 
     # Run inference on an image using the prompt
     results = base_model.predict(image_path)
