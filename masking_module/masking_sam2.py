@@ -29,11 +29,19 @@ sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=sam2_checkpoint, de
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(sam2)
 
-# Monkey patch the build_sam2 function in autodistill_grounded_sam_2
+# Monkey patch the build_sam2 function and load_SAM function in autodistill_grounded_sam_2
 from autodistill_grounded_sam_2 import helpers
 def patched_build_sam2(model_cfg, checkpoint, device=DEVICE):
     return build_sam2(config_file=model_cfg, ckpt_path=checkpoint, device=device, apply_postprocessing=True)
+
+def patched_load_SAM():
+    model_cfg = os.path.join(segment_anything_dir, "sam2_configs", "sam2_hiera_l.yaml")
+    checkpoint = os.path.join(segment_anything_dir, "checkpoints", "sam2_hiera_large.pt")
+    sam2 = patched_build_sam2(model_cfg, checkpoint, DEVICE)
+    return sam2
+
 helpers.build_sam2 = patched_build_sam2
+helpers.load_SAM = patched_load_SAM
 
 def generate_mask(image_path, category):
     # Load the image
