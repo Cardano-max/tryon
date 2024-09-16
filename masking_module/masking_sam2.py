@@ -24,7 +24,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 initialize(version_base=None, config_path=os.path.join(segment_anything_dir, "sam2_configs"))
 
 # Build SAM 2 model
-sam2 = build_sam2(config_file="sam2_hiera_l.yaml", ckpt_path=sam2_checkpoint, device=DEVICE, apply_postprocessing=True)
+sam2 = build_sam2(model_cfg, sam2_checkpoint, device=DEVICE, apply_postprocessing=True)
 
 # Initialize the automatic mask generator
 mask_generator = SAM2AutomaticMaskGenerator(
