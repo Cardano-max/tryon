@@ -22,7 +22,7 @@ from transformers import (
 from diffusers import DDPMScheduler, AutoencoderKL, StableDiffusionXLImg2ImgPipeline
 from typing import List
 from transformers import AutoTokenizer
-from gradio_demo.masking_handler import get_mask  # Import the new masking function
+from masking_module2.ArbitryonMasking.Florence.FlorenceMasking import FlorenceMasking
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
@@ -485,7 +485,9 @@ def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is
 
         if is_checked:
             print("Generating mask using AI-powered auto-masking...")
-            mask = get_mask(human_img, category_dict[category])
+            florence_masking = FlorenceMasking()
+            florence_masking.load_model()
+            mask = florence_masking.get_mask(human_img_path)
             mask = Image.fromarray(mask).resize((768,1024))
             print("Mask generated using AI-powered auto-masking.")
         else:

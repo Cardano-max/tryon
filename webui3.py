@@ -15,7 +15,7 @@ import modules1.async_worker as worker
 import modules1.constants as constants
 import modules1.flags as flags
 from modules1.util import HWC3, resize_image
-from masking_module.masking_module import generate_mask
+from masking_module2.ArbitryonMasking.Florence.FlorenceMasking import FlorenceMasking
 import uuid
 import signal
 
@@ -39,7 +39,9 @@ def virtual_try_on(person_image_path, prompt, category="dresses", output_path=No
         person_image = np.array(person_image)
         print("Person image loaded successfully.")
 
-        inpaint_mask = generate_mask(Image.fromarray(person_image), category)
+        florence_masking = FlorenceMasking()
+        florence_masking.load_model()
+        inpaint_mask = florence_masking.get_mask(person_image_path)
 
         orig_person_h, orig_person_w = person_image.shape[:2]
         person_aspect_ratio = orig_person_h / orig_person_w

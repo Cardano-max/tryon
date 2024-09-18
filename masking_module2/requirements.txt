@@ -1,0 +1,4 @@
+autodistill-grounded-sam-2
+opencv-python-headless
+matplotlib
+numpy
