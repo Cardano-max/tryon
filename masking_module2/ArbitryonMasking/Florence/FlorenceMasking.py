@@ -15,7 +15,7 @@ class FlorenceMasking:
     def load_model(self):
         if not self.model_loaded:
             self.model = GroundedSAM2(
-                ontology = self.ontology
+                ontology=self.ontology
             )
         self.model_loaded = True
 
@@ -34,8 +34,11 @@ class FlorenceMasking:
         mask = np.zeros(image.shape[:2], dtype=np.uint8)
 
         # Fill the mask with white for the detected object
-        if results.mask is not None:
+        if hasattr(results, 'mask') and results.mask is not None:
             for single_mask in results.mask:
+                mask = np.logical_or(mask, single_mask).astype(np.uint8)
+        elif hasattr(results, 'masks') and results.masks is not None:
+            for single_mask in results.masks:
                 mask = np.logical_or(mask, single_mask).astype(np.uint8)
 
         # Convert to binary mask (0 and 255)
