@@ -3,6 +3,10 @@ import numpy as np
 import os
 from autodistill_grounded_sam_2 import GroundedSAM2
 from autodistill.detection import CaptionOntology
+from PIL import Image
+
+def load_image(image_path):
+    return Image.open(image_path).convert("RGB")
 
 class FlorenceMasking:
     def __init__(self):
@@ -23,15 +27,17 @@ class FlorenceMasking:
         if not self.model_loaded:
             self.load_model()
 
-        # Run inference on an image using the prompt
-        results = self.model.predict(image_path)
+        # Load the image using our custom load_image function
+        image = load_image(image_path)
 
-        # Load the image using OpenCV
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+        # Run inference on an image using the prompt
+        results = self.model.predict(image)
+
+        # Convert PIL Image to numpy array
+        image_np = np.array(image)
 
         # Create a blank mask
-        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        mask = np.zeros(image_np.shape[:2], dtype=np.uint8)
 
         # Fill the mask with white for the detected object
         if hasattr(results, 'mask') and results.mask is not None:
