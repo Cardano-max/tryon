@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append('/tryon')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import traceback
 import gradio as gr
@@ -22,7 +22,7 @@ from transformers import (
 from diffusers import DDPMScheduler, AutoencoderKL, StableDiffusionXLImg2ImgPipeline
 from typing import List
 from transformers import AutoTokenizer
-from masking_module2.ArbitryonMasking.Florence.FlorenceMasking import FlorenceMasking
+from ArbiTryOn-Masking.ArbitryonMasking.FlorenceMasking import FlorenceMasking
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
