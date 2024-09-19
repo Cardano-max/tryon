@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import os
-
 from autodistill_grounded_sam_2 import GroundedSAM2
 from autodistill.detection import CaptionOntology
 
@@ -22,6 +20,9 @@ class FlorenceMasking:
         self.model_loaded = True
 
     def get_mask(self, image_path, output_path="outputs/"):
+        if not self.model_loaded:
+            self.load_model()
+
         # Run inference on an image using the prompt
         results = self.model.predict(image_path)
 
@@ -39,14 +40,19 @@ class FlorenceMasking:
 
         # Convert to binary mask (0 and 255)
         binary_mask = mask * 255
+        
         # Save binary mask in output as samename_mask.png
-        filename = image_path.split("/")[-1]
+        filename = os.path.basename(image_path)
         print('Mask Created for:', filename)
-        cv2.imwrite(output_path + filename.split(".")[0] + "_mask.png", binary_mask)
-        print(f"File written to {output_path + filename.split('.')[0] + '_mask.png'}")
+        output_file = os.path.join(output_path, f"{os.path.splitext(filename)[0]}_mask.png")
+        os.makedirs(output_path, exist_ok=True)
+        cv2.imwrite(output_file, binary_mask)
+        print(f"File written to {output_file}")
+        
+        return binary_mask
 
-    def get_mask_from_folder(self, folder_path):
+    def get_mask_from_folder(self, folder_path, output_path="outputs/"):
         # Open the folder and get all the images
-        images = os.listdir(folder_path)
+        images = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
         for image in images:
-            self.get_mask(folder_path + image)
+            self.get_mask(os.path.join(folder_path, image), output_path)
