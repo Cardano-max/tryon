@@ -1,24 +1,17 @@
 import argparse
-
 from ArbitryonMasking.Florence.FlorenceMasking import FlorenceMasking
 
-def main():
-    # Create an instance of FlorenceMasking
-    florence = FlorenceMasking()
-    florence.load_model()
-
-    parser = argparse.ArgumentParser(description="Speak Insight. Get insights from your chats and never make a mistake again.")
-    parser.add_argument("-f", "--filepath",type=str, help="The path to the file to read.", default=None)
-    parser.add_argument("-fl", "--folderpath",type=str, help="The path to the folder to read files from.", default=None)
-
-    args = parser.parse_args()
-
-    if args.filepath:
-        florence.get_mask(args.filepath)
-    elif args.folderpath:
-        florence.get_mask_from_folder(args.folderpath)
+def main(image_path):
+    masking = FlorenceMasking()
+    mask = masking.get_mask(image_path)
+    if mask is not None:
+        print(f"Mask generated for {image_path}")
     else:
-        print("Usage Error: Please provide either a file path or a folder path.")
+        print(f"Failed to generate mask for {image_path}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Generate mask for an image")
+    parser.add_argument("-f", "--file", required=True, help="Path to the input image")
+    args = parser.parse_args()
+
+    main(args.file)

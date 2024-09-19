@@ -1,9 +1,7 @@
-import cv2
-import numpy as np
-import os
 from autodistill_grounded_sam_2 import GroundedSAM2
 from autodistill.detection import CaptionOntology
 from PIL import Image
+import os
 
 def load_image(image_path):
     return Image.open(image_path).convert("RGB")
@@ -27,41 +25,17 @@ class FlorenceMasking:
         if not self.model_loaded:
             self.load_model()
 
-        # Load the image using our custom load_image function
         image = load_image(image_path)
-
-        # Run inference on an image using the prompt
         results = self.model.predict(image)
-
-        # Convert PIL Image to numpy array
-        image_np = np.array(image)
-
-        # Create a blank mask
-        mask = np.zeros(image_np.shape[:2], dtype=np.uint8)
-
-        # Fill the mask with white for the detected object
-        if hasattr(results, 'mask') and results.mask is not None:
-            for single_mask in results.mask:
-                mask = np.logical_or(mask, single_mask).astype(np.uint8)
-        elif hasattr(results, 'masks') and results.masks is not None:
-            for single_mask in results.masks:
-                mask = np.logical_or(mask, single_mask).astype(np.uint8)
-
-        # Convert to binary mask (0 and 255)
-        binary_mask = mask * 255
         
-        # Save binary mask in output as samename_mask.png
-        filename = os.path.basename(image_path)
-        print('Mask Created for:', filename)
-        output_file = os.path.join(output_path, f"{os.path.splitext(filename)[0]}_mask.png")
-        os.makedirs(output_path, exist_ok=True)
-        cv2.imwrite(output_file, binary_mask)
-        print(f"File written to {output_file}")
-        
-        return binary_mask
+        # Process results and save mask
+        mask = results.mask[0] if results.mask is not None else None
+        if mask is not None:
+            os.makedirs(output_path, exist_ok=True)
+            mask_path = os.path.join(output_path, f"{os.path.basename(image_path)}_mask.png")
+            Image.fromarray(mask.astype('uint8') * 255).save(mask_path)
+            print(f"Mask saved to {mask_path}")
+        else:
+            print("No mask generated")
 
-    def get_mask_from_folder(self, folder_path, output_path="outputs/"):
-        # Open the folder and get all the images
-        images = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-        for image in images:
-            self.get_mask(os.path.join(folder_path, image), output_path)
+        return mask
