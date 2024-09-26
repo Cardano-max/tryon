@@ -36,7 +36,8 @@ from PIL import Image
 import numpy as np
 
 # Import the Defocus virtual_try_on function
-from webui3 import generate_mask
+from webui3 import virtual_try_on as defocus_virtual_try_on
+
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 
@@ -411,31 +412,202 @@ def generate_dummy_pose_image(human_img):
     pose_img = Image.new('RGB', human_img.size, color=(0, 0, 0))
     return pose_img
 
-def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
+def start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
     try:
-        # Generate mask using Florence Plus SAM2 2
-        mask = generate_mask(dict['image'], category)
+        print("Moving models to device...")
+        openpose_model.preprocessor.body_estimation.model.to(device)
+        pipe.to(device)
+        pipe.unet_encoder.to(device)
+        print("Models moved to device successfully.")
+
+        print("Resizing garment image...")
+        garm_img = garm_img.convert("RGB").resize((768,1024))
+        print("Garment image resized successfully.")
+
+        print("Loading original image...")
+        original_img = dict["background"]
+        human_img_orig = original_img.convert("RGB")
+        print("Original image loaded successfully.")
+
+        print("Checking if image contains a full-body pose...")
+        if not is_full_body_image(human_img_orig):
+            print("Image does not contain a full-body pose.")
+            return None, None, "Please upload a full-body image showing your entire body, including head, hands, and feet."
+
+        temp_original_path = f"temp_original_{uuid.uuid4()}.jpg"
+        print(f"Saving original image temporarily at: {temp_original_path}")
+        human_img_orig.save(temp_original_path)
+        print("Original image saved temporarily.")
+
+        print("Processing image with Defocus...")
+        defocus_result = process_with_defocus(temp_original_path)
         
-        if mask is None:
-            return None, None, "Mask generation failed."
+        if defocus_result is None:
+            print("Defocus processing failed.")
+            return None, None, "Failed to process the image with Defocus."
 
-        # Initialize IDM VTON
-        idm_vton = IDM_VTON()
+        print("Defocus processing completed successfully.")
+        human_img_orig = defocus_result
 
-        # Perform virtual try-on
-        result_image = idm_vton.try_on(dict['image'], garm_img, mask)
+        unique_id = str(uuid.uuid4())
+        save_dir = "eval_images"
+        os.makedirs(save_dir, exist_ok=True)
+        human_img_path = os.path.join(save_dir, f"{unique_id}_ORIGINAL.png")
+        masked_img_path = os.path.join(save_dir, f"{unique_id}_MASK.png")
+        output_img_path = os.path.join(save_dir, f"{unique_id}_OUTPUT.png")
 
-        if result_image is None:
-            return None, None, "Virtual try-on failed."
+        if blur_face:
+            print("Blurring faces in the image...")
+            face_blur(human_img_orig).save(human_img_path)
+            print("Faces blurred and image saved.")
+        else:
+            print("Saving image without face blurring...")
+            human_img_orig.save(human_img_path)
+            print("Image saved without face blurring.")
 
-        # Save the result
-        result_path = f"output_{uuid.uuid4()}.png"
-        result_image.save(result_path)
+        if is_checked_crop:
+            print("Cropping and resizing image...")
+            width, height = human_img_orig.size
+            target_width = int(min(width, height * (3 / 4)))
+            target_height = int(min(height, width * (4 / 3)))
+            left = (width - target_width) / 2
+            top = (height - target_height) / 2
+            right = (width + target_width) / 2
+            bottom = (height + target_height) / 2
+            cropped_img = human_img_orig.crop((left, top, right, bottom))
+            crop_size = cropped_img.size
+            human_img = cropped_img.resize((768,1024))
+            print("Image cropped and resized successfully.")
+        else:
+            print("Resizing image without cropping...")
+            human_img = human_img_orig.resize((768,1024))
+            print("Image resized without cropping.")
 
-        return result_image, mask, "Virtual try-on completed successfully."
+        if is_checked:
+            print("Generating mask using AI-powered auto-masking...")
+            florence_masking = FlorenceMasking()
+            florence_masking.load_model()
+            mask = florence_masking.get_mask(human_img_path)
+            mask = Image.fromarray(mask).resize((768,1024))
+            print("Mask generated using AI-powered auto-masking.")
+        else:
+            print("Generating mask using user-provided layer...")
+            mask = pil_to_binary_mask(dict['layers'][0].convert("RGB").resize((768, 1024)))
+            print("Mask generated using user-provided layer.")
+
+        if isinstance(mask, Image.Image):
+            mask = np.array(mask)
+
+        print("Preparing masked image...")
+        mask_gray = (1-transforms.ToTensor()(mask)) * tensor_transfrom(human_img)
+        mask_gray = to_pil_image((mask_gray+1.0)/2.0)
+
+        print("Generating dummy pose image...")
+        pose_img = generate_dummy_pose_image(human_img)
+        print("Dummy pose image generated.")
+
+        with torch.no_grad():
+            with torch.cuda.amp.autocast():
+                prompt = "model is wearing " + garment_des
+                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                print("Encoding prompts...")
+                prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds = pipe.encode_prompt(
+                    prompt,
+                    num_images_per_prompt=1,
+                    do_classifier_free_guidance=True,
+                    negative_prompt=negative_prompt,
+                )
+                print("Prompts encoded successfully.")
+
+                prompt = "a photo of " + garment_des
+                negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
+                if not isinstance(prompt, List):
+                    prompt = [prompt] * 1
+                if not isinstance(negative_prompt, List):
+                    negative_prompt = [negative_prompt] * 1
+                print("Encoding additional prompts...")
+                prompt_embeds_c, _, _, _ = pipe.encode_prompt(
+                    prompt,
+                    num_images_per_prompt=1,
+                    do_classifier_free_guidance=False,
+                    negative_prompt=negative_prompt,
+                )
+                print("Additional prompts encoded successfully.")
+
+                print("Preparing input data...")
+                pose_img = tensor_transfrom(pose_img).unsqueeze(0).to(device,torch.float16)
+                garm_tensor = tensor_transfrom(garm_img).unsqueeze(0).to(device,torch.float16)
+                generator = torch.Generator(device).manual_seed(seed) if seed is not None else None
+                print("Input data prepared.")
+
+                print("Generating images...")
+                images = pipe(
+                    prompt_embeds=prompt_embeds.to(device,torch.float16),
+                    negative_prompt_embeds=negative_prompt_embeds.to(device,torch.float16),
+                    pooled_prompt_embeds=pooled_prompt_embeds.to(device,torch.float16),
+                    negative_pooled_prompt_embeds=negative_pooled_prompt_embeds.to(device,torch.float16),
+                    num_inference_steps=denoise_steps,
+                    generator=generator,
+                    strength=1.0,
+                    pose_img=pose_img.to(device,torch.float16),
+                    text_embeds_cloth=prompt_embeds_c.to(device,torch.float16),
+                    cloth=garm_tensor.to(device,torch.float16),
+                    mask_image=mask,
+                    image=human_img,
+                    height=1024,
+                    width=768,
+                    ip_adapter_image=garm_img.resize((768,1024)),
+                    guidance_scale=2.0,
+                )[0]
+                print("Images generated successfully.")
+
+        if is_checked_crop:
+            print("Resizing and pasting output image...")
+            out_img = images[0].resize(crop_size)
+            human_img_orig.paste(out_img, (int(left), int(top)))
+            print("Output image resized and pasted.")
+
+            if blur_face:
+                print("Blurring faces in the masked image...")
+                face_blur(mask_gray).save(masked_img_path)
+                print("Faces blurred in the masked image.")
+                print("Blurring faces in the output image...")
+                face_blur(human_img_orig).save(output_img_path)
+                print("Faces blurred in the output image.")
+            else:
+                print("Saving masked image without face blurring...")
+                mask_gray.save(masked_img_path)
+                print("Masked image saved without face blurring.")
+                print("Saving output image without face blurring...")
+                human_img_orig.save(output_img_path)
+                print("Output image saved without face blurring.")
+
+            print(f"Output image saved at: {output_img_path}")
+            return human_img_orig, mask_gray, ""
+        else:
+            if blur_face:
+                print("Blurring faces in the masked image...")
+                face_blur(mask_gray).save(masked_img_path)
+                print("Faces blurred in the masked image.")
+                print("Blurring faces in the output image...")
+                face_blur(images[0]).save(output_img_path)
+                print("Faces blurred in the output image.")
+            else:
+                print("Saving masked image without face blurring...")
+                mask_gray.save(masked_img_path)
+                print("Masked image saved without face blurring.")
+                print("Saving output image without face blurring...")
+                images[0].save(output_img_path)
+                print("Output image saved without face blurring.")
+
+            print(f"Output image saved at: {output_img_path}")
+            return images[0], mask_gray, ""
     except Exception as e:
-        print(f"Error in process_tryon: {str(e)}")
+        print("Error occurred in start_tryon:")
+        traceback.print_exc()
         return None, None, f"An error occurred: {str(e)}"
+
+    
 
 garm_list = os.listdir(os.path.join(example_path,"cloth"))
 garm_list_path = [os.path.join(example_path,"cloth",garm) for garm in garm_list]
@@ -450,6 +622,84 @@ for ex_human in human_list_path:
     ex_dict['layers'] = None
     ex_dict['composite'] = None
     human_ex_list.append(ex_dict)
+
+def process_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed):
+    try:
+        # Generate unique ID for this try-on session
+        session_id = str(uuid.uuid4())
+        save_dir = "eval_images"
+        os.makedirs(save_dir, exist_ok=True)
+
+        # Step 1: Initial try-on
+        result_image, mask_image, error_message = start_tryon(dict, garm_img, garment_des, is_checked, category, blur_face, is_checked_crop, denoise_steps, seed)
+        
+        if error_message:
+            return None, None, error_message
+
+        # Save initial results
+        initial_result_path = os.path.join(save_dir, f"{session_id}_initial_result.png")
+        initial_mask_path = os.path.join(save_dir, f"{session_id}_initial_mask.png")
+        result_image.save(initial_result_path)
+        mask_image.save(initial_mask_path)
+
+        # Step 2: Refinement
+        if result_image is not None:
+            try:
+                # Load the SDXL refiner model
+                refiner = StableDiffusionXLInpaintPipeline.from_pretrained(
+                    "stabilityai/stable-diffusion-xl-refiner-1.0",
+                    torch_dtype=torch.float16,
+                    variant="fp16"
+                ).to("cuda")
+                refiner.enable_model_cpu_offload()
+
+                # Prepare the refinement mask using the Masking class
+                refined_mask, _ = masker.get_mask(result_image, category='full_body')
+                refined_mask_path = os.path.join(save_dir, f"{session_id}_refined_mask.png")
+                refined_mask.save(refined_mask_path)
+
+                # Refine the image
+                prompt = f"Enhance and refine the image, focusing on realistic body anatomy, hands, and feet. {garment_des}"
+                refined_image = refiner(
+                    prompt=prompt,
+                    image=result_image,
+                    mask_image=refined_mask,
+                    num_inference_steps=30,
+                    strength=0.3,
+                    guidance_scale=7.5
+                ).images[0]
+
+                refined_image_path = os.path.join(save_dir, f"{session_id}_refined_image.png")
+                refined_image.save(refined_image_path)
+
+                # Step 3: Final enhancement
+                img2img = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                    "stabilityai/stable-diffusion-xl-refiner-1.0",
+                    torch_dtype=torch.float16,
+                    variant="fp16"
+                ).to("cuda")
+                img2img.enable_model_cpu_offload()
+
+                final_image = img2img(
+                    prompt=prompt,
+                    image=refined_image,
+                    num_inference_steps=20,
+                    strength=0.2,
+                    guidance_scale=7.5
+                ).images[0]
+
+                final_image_path = os.path.join(save_dir, f"{session_id}_final_image.png")
+                final_image.save(final_image_path)
+
+                return final_image, refined_mask, ""
+            except Exception as e:
+                print(f"Error during refinement: {str(e)}")
+                return result_image, mask_image, "Refinement failed, returning original result."
+        else:
+            return None, None, "Initial image generation failed."
+    except Exception as e:
+        print(f"Error in process_tryon: {str(e)}")
+        return None, None, f"An error occurred: {str(e)}"
 
 with gr.Blocks(css=custom_css) as demo:
     gr.HTML("""
