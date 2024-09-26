@@ -22,7 +22,7 @@ from transformers import (
 from diffusers import DDPMScheduler, AutoencoderKL, StableDiffusionXLImg2ImgPipeline
 from typing import List
 from transformers import AutoTokenizer
-from ArbiTryOn_Masking.ArbitryonMasking.Florence.FlorenceMasking import FlorenceMasking
+from masking_module2.ArbitryonMasking.Florence.FlorenceMasking import FlorenceMasking
 from torchvision import transforms
 from torchvision.transforms.functional import to_pil_image
 import mediapipe as mp
