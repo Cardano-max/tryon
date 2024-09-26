@@ -8,7 +8,7 @@ def test_florence_masking():
     florence_masking = FlorenceMasking()
 
     # Path to the test image
-    image_path = "hania.jpg"
+    image_path = "/tryon/masking_module2/ArbitryonMasking/Florence/hania.jpg"
 
     # Ensure the image file exists
     if not os.path.exists(image_path):
@@ -16,7 +16,7 @@ def test_florence_masking():
         return
 
     # Test the masking
-    mask = florence_masking.test_masking(image_path)
+    mask = florence_masking.get_mask(image_path)
 
     if mask is not None:
         # Load the original image
@@ -40,7 +40,7 @@ def test_florence_masking():
         plt.show()
 
         # Save the figure
-        output_path = "masking_result.png"
+        output_path = "/tryon/masking_module2/ArbitryonMasking/Florence/masking_result.png"
         plt.savefig(output_path)
         print(f"Masking result saved to {output_path}")
     else:
