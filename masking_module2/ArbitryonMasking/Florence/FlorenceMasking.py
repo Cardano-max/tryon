@@ -39,3 +39,12 @@ class FlorenceMasking:
             print("No mask generated")
 
         return mask
+
+    def test_masking(self, image_path):
+        print(f"Testing masking for image: {image_path}")
+        mask = self.get_mask(image_path)
+        if mask is not None:
+            print("Mask generated successfully")
+        else:
+            print("Failed to generate mask")
+        return mask
