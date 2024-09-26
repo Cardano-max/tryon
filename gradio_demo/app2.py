@@ -37,8 +37,6 @@ import numpy as np
 
 # Import the Defocus virtual_try_on function
 from webui3 import generate_mask
-from idm_vton import IDM_VTON  # Assuming you have this module
-
 from preprocess.humanparsing.run_parsing import Parsing
 from preprocess.openpose.run_openpose import OpenPose
 
